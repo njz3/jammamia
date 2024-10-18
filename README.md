@@ -26,8 +26,8 @@ Example wiring for a bulb LAMP:
       +5V
        |
       LAMP
-	   |
-	  OUT1   (will be pulled to GND when enabled)
+       |
+      OUT1   (will be pulled to GND when enabled)
 ````
 
 # Routed IOs
