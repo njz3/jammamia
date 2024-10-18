@@ -10,6 +10,10 @@ Arduino libraries needed:
 - DigitalWriteFast (https://github.com/ArminJo/digitalWriteFast)
 - ArduinoJoystickLibrary from Matthew Heironimus (https://github.com/MHeironimus/ArduinoJoystickLibrary)
 
+Specific JammaMia libraies (in this github):
+- KeyboarNKey for 24-Key rollover (https://github.com/njz3/jammamia/tree/main/Libs/KeyboardNKey)
+- MouseN for 2 mouses emulation (https://github.com/njz3/jammamia/tree/main/Libs/MouseN)
+
 # Technical information
 
 The board contains 2xMCP23017 IOs expenders on I2C bus for digital inputs (buttons) and outputs (lamps);
@@ -18,13 +22,15 @@ The OUT pins are meant to be used to set GND to the pin when it is enabled. Maxi
 The OUTPWM pins have also the additionnal property to be PWM pins that can be used to perform dimming.
 
 Example wiring for a bulb LAMP:
+````
       +5V
        |
       LAMP
 	   |
 	  OUT1   (will be pulled to GND when enabled)
+````
 
 # Routed IOs
 
-See pinout in PDF
-
+See pinout in PDF: 
+![Pinout](https://github.com/njz3/jammamia/blob/main/JammaMia%20-%20Pinout.pdf)
