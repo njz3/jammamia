@@ -79,7 +79,7 @@ void ResetConfig() {
 #endif
 #endif
 
-  ConfigFile.Options = (byte)RISING;
+  ConfigFile.Delay_us = 0;
 
   // Emulated layout
   //ConfigFile.KeybLayout = 0;  // Layout en-US
@@ -146,10 +146,10 @@ void ResetConfig() {
   for (uint8_t i = 0; i < 4; i++) {
     // P1 Up/Down/Left/right
     ConfigFile.DigitalInB[i + 8].Type = MappingType::MouseAxisIncr;
-    ConfigFile.DigitalInB[i + 8].MapTo = (byte)1 << i;
+    ConfigFile.DigitalInB[i + 8].MapTo = (byte)(1 << i);
     // P2
     ConfigFile.DigitalInB[i + 8 + 14].Type = MappingType::MouseAxisIncr;
-    ConfigFile.DigitalInB[i + 8 + 14].MapTo = (byte)1 << i + (byte)(1 << 7);
+    ConfigFile.DigitalInB[i + 8 + 14].MapTo = (byte)(1 << i) + (byte)(1 << 7);
   }
   
 #endif
@@ -172,10 +172,10 @@ void ResetConfig() {
   for (uint8_t i = 0; i < 4; i++) {
     // P1
     ConfigFile.DigitalInB[i + 8].Type = MappingType::JoyDirHAT;
-    ConfigFile.DigitalInB[i + 8].MapTo = (byte)1 << i;
+    ConfigFile.DigitalInB[i + 8].MapTo = (byte)(1 << i);
     // P2
-    ConfigFile.DigitalInB[i + 8 + 14].Type = MappingType::JoyButton;
-    ConfigFile.DigitalInB[i + 8 + 14].MapTo = (byte)1 << i + (byte)(1 << 7);
+    ConfigFile.DigitalInB[i + 8 + 14].Type = MappingType::JoyDirHAT;
+    ConfigFile.DigitalInB[i + 8 + 14].MapTo = (byte)(1 << i) + (byte)(1 << 7);
   }
   // 2x Start/coin
   for (uint8_t i = 0; i < 2; i++) {
@@ -196,6 +196,14 @@ void ResetConfig() {
   }
 
 #endif
+  /*
+  for (uint8_t i = 0; i < sizeof(ConfigFile.DigitalInB) / sizeof(ConfigFile.DigitalInB[0]); i++) {
+    Serial.print(i);
+    Serial.print(" type="); Serial.print(ConfigFile.DigitalInB[i].Type);
+    Serial.print(" mapto="); Serial.print(ConfigFile.DigitalInB[i].MapTo, HEX);
+    Serial.println();
+  }
+  */
 }
 
 }

@@ -15,7 +15,7 @@
 
 namespace Mou {
 
-static MouseN_ *Mouse;
+static MouseN_ *Mouse = nullptr;
 
 const uint8_t MouseButtons[] = { MOUSE_LEFT, MOUSE_RIGHT, MOUSE_MIDDLE };
 
@@ -28,6 +28,8 @@ void Setup() {
 void BtnPress(byte button) {
   int p = button >> 7;
   int btn = button & 0b111;
+  if (Mouse == nullptr)
+    return;
   // if the mouse is not pressed, press it:
   if (!Mouse->isPressed(MouseButtons[btn], p == 1)) {
     Mouse->press(MouseButtons[btn], p == 1);
@@ -43,6 +45,8 @@ void BtnPress(byte button) {
 void BtnRelease(byte button) {
   int p = button >> 7;
   int btn = button & 0b111;
+  if (Mouse == nullptr)
+    return;
   // if the mouse is pressed, release it:
   if (Mouse->isPressed(MouseButtons[btn], p == 1)) {
     Mouse->release(MouseButtons[btn], p == 1);
@@ -63,6 +67,8 @@ void SetAxis(byte axis, int32_t value) {
   int yDistance = (dir == 0b010 ? value : 0);
   int wDistance = (dir == 0b100 ? value : 0);
 
+  if (Mouse == nullptr)
+    return;
   Mouse->move(xDistance, yDistance, wDistance, p == 1);
 }
 
@@ -75,11 +81,15 @@ void IncrAxis(byte axis, int32_t value) {
   int yDistance = (dir == 0b010 ? value : 0);
   int wDistance = (dir == 0b100 ? value : 0);
 
+  if (Mouse == nullptr)
+    return;
   Mouse->move(xDistance, yDistance, wDistance, p == 1);
 }
 
 
 void UpdateToPC() {
+  if (Mouse == nullptr)
+    return;
   Mouse->sendReport(false);
   Mouse->sendReport(true);
 #ifdef DEBUG_PRINTF

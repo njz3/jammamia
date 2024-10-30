@@ -15,7 +15,7 @@
 
 namespace Keyb {
 
-static KeyboardNKey_ *Keyboard;
+static KeyboardNKey_ *Keyboard = nullptr;
 
 void Setup() {
   Serial.println(F("MKeyboard emulation enabled"));
@@ -34,6 +34,7 @@ void Setup() {
     case 4:
       Keyboard->begin(KeyboardLayout_es_ES);
       break;
+
     case 0:
     default:
       Keyboard->begin(KeyboardLayout_en_US);
@@ -44,6 +45,8 @@ void Setup() {
 }
 
 void Press(byte key) {
+  if (Keyboard == nullptr)
+    return;
   Keyboard->press(key);
 
 #ifdef DEBUG_PRINTF
@@ -53,6 +56,8 @@ void Press(byte key) {
 }
 
 void Release(byte key) {
+  if (Keyboard == nullptr)
+    return;
   Keyboard->release(key);
 
 #ifdef DEBUG_PRINTF
@@ -62,6 +67,8 @@ void Release(byte key) {
 }
 
 void UpdateToPC() {
+  if (Keyboard == nullptr)
+    return;
   Keyboard->sendState();
 #ifdef DEBUG_PRINTF
   Serial.println(F("keyb update"));

@@ -7,7 +7,8 @@ namespace Globals {
 
 InternalConfig VolatileConfig;
 
-uint32_t lagtimeRead = 0;
+uint16_t ioReadTime_us = 0;
+uint16_t refreshRate_us = 0;
 
 // Bit order GPA 0..6, GPB 0..6
 uint16_t MCPIOs[2];
@@ -23,7 +24,5 @@ int16_t AIn[NB_ANALOGINPUTS];
 bool DOut[NB_DIGITALOUTPUTS];
 // All analog outputs
 int16_t AOut[NB_ANALOGOUTPUTS];
-
-bool LicenseOK = false;
 
 }

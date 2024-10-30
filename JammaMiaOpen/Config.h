@@ -5,7 +5,7 @@
 // Arduino Framework
 #include <Arduino.h>
 
-//#define USE_KEYB
+#define USE_KEYB
 #define USE_JOY
 //#define USE_MOUSE
 
@@ -150,8 +150,8 @@ typedef struct __attribute__((__packed__)) {
   COMSPEED SerialSpeed;
   // Emulation mode
   EmulationModes EmulationMode;
-  // Refresh rate
-  byte Options;
+  // Delay for busy wait in us
+  uint16_t Delay_us;
   // Emulated layout
   uint8_t KeybLayout;
   // digital inputs configuration

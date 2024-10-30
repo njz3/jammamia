@@ -16,13 +16,11 @@ static const char nibbletable[] = "0123456789ABCDEFX";
 void ConvertToNDigHex(uint32_t value, String& shex, uint32_t N) {
   int32_t i;
   shex.reserve(N);
-  char* hex = shex.begin();
   for (i = N - 1; i >= 0; i--) {
     uint32_t nibble = value & 0xF;  // Récupère le nibble 'i'
-    hex[i] = nibbletable[nibble];
+    shex = String(nibbletable[nibble]) + shex;
     value = value >> 4;
   }
-  hex[N] = 0;
 }
 
 uint32_t ConvertHexToInt(const String& shex, int N) {

@@ -14,7 +14,7 @@
 
 namespace Joy {
 
-static Joystick_* Joystick[JOYSTICK_COUNT];
+static Joystick_* Joystick[JOYSTICK_COUNT] = { };
 
 static byte HATDirections[JOYSTICK_COUNT][4];
 
@@ -51,6 +51,8 @@ void Setup() {
 void BtnPress(byte button) {
   int p = button >> 7;
   int btn = button & 0b01111111;
+  if (Joystick[p] == nullptr)
+    return;
   Joystick[p]->pressButton(btn);
 #ifdef DEBUG_PRINTF
   Serial.print(F("joy P"));
@@ -63,6 +65,8 @@ void BtnPress(byte button) {
 void BtnRelease(byte button) {
   int p = button >> 7;
   int btn = button & 0b01111111;
+  if (Joystick[p] == nullptr)
+    return;
   Joystick[p]->releaseButton(btn);
 #ifdef DEBUG_PRINTF
   Serial.print(F("joy P"));
@@ -97,6 +101,8 @@ const int16_t DirectionToHATTable[] = {
 
 void SetHATSwitch(byte hatdirection, bool enable) {
   int p = hatdirection >> 7;
+  if (Joystick[p] == nullptr)
+    return;
   byte hatsw = hatdirection >> 5 & 0b11;
   byte direction = hatdirection & 0b00001111;
   if (enable) {
@@ -123,6 +129,8 @@ void SetHATSwitch(byte hatdirection, bool enable) {
 void SetAxis(byte axis, int32_t value) {
   int p = axis >> 7;
   byte axisidx = axis & 0b00000111;  // 0..7
+  if (Joystick[p] == nullptr)
+    return;
   switch (axisidx) {
     case 0:
       Joystick[p]->setXAxis(value);
@@ -162,6 +170,8 @@ void SetAxis(byte axis, int32_t value) {
 
 void UpdateToPC() {
   for (int i = 0; i < JOYSTICK_COUNT; i++) {
+    if (Joystick[i] == nullptr)
+      continue;
     Joystick[i]->sendState();
   }
 #ifdef DEBUG_PRINTF

@@ -36,6 +36,9 @@ const int MCUAnalogOutpin[NB_ANALOGOUTPUTS] = { 5, 6, 9, 10 };
 Adafruit_MCP23X17 mcp1;  //declaration for chip 1
 Adafruit_MCP23X17 mcp2;  //declaration for chip 2
 
+uint16_t tickCounter = 0;
+
+
 void setup() {
 
   // Configure I2C pins on MCU
@@ -51,13 +54,20 @@ void setup() {
     pinMode(MCUDigitalInpin[i], INPUT_PULLUP);
   }
   for (int i = 0; i < (int)(sizeof(MCUAnalogInpin) / sizeof(MCUAnalogInpin[0])); i++) {
-    pinMode(MCUAnalogInpin[i], INPUT_PULLUP);
+    pinMode(MCUAnalogInpin[i], INPUT);
   }
   for (int i = 0; i < (int)(sizeof(MCUAnalogOutpin) / sizeof(MCUAnalogOutpin[0])); i++) {
     pinMode(MCUAnalogOutpin[i], INPUT_PULLUP);
   }
-
+  
   bool epromResetDone = false;
+
+  // Maintain TEST2 + TILT to force reset of configuration
+  if ((!digitalReadFast(MCUDigitalInpin[2])) && (!digitalReadFast(MCUDigitalInpin[3]))) {
+    Config::ResetConfig();
+    Config::SaveConfigToEEPROM();
+    epromResetDone = true;
+  }
   // Read configuration, if that fails then reset configuration again
   if (Config::LoadConfigFromEEPROM() != 1) {
     Config::ResetConfig();
@@ -95,16 +105,15 @@ void setup() {
   for (int8_t i = 0; i <= 15; i++) {
     if (i == 7 || i == 15) {
       mcp1.pinMode(i, OUTPUT);
-      mcp1.digitalWrite(i, true);
+      mcp1.digitalWrite(i, false);
       mcp2.pinMode(i, OUTPUT);
-      mcp2.digitalWrite(i, true);
+      mcp2.digitalWrite(i, false);
     } else {
       mcp1.pinMode(i, INPUT_PULLUP);
       mcp2.pinMode(i, INPUT_PULLUP);
     }
   }
 
-  Config::ConfigFile.EmulationMode = Config::EmulationModes::MouseAndKeyboard;
   Serial.print(F("MEmulation mode="));
   Serial.println(Config::ConfigFile.EmulationMode);
 
@@ -170,17 +179,25 @@ void MCPISR() {
 }
 
 void RefreshMCPInputs() {
+  // Inputs are inversed (logic 0 means connected to GND = pressed)
   Globals::MCPIOs[0] = ~(mcp1.readGPIOAB());
   Globals::MCPIOs[1] = ~(mcp2.readGPIOAB());
 }
 
 void RefreshMCPOutputs(bool doutstates[4]) {
-  bitWrite(Globals::MCPIOs[0], 7, doutstates[0]);
-  bitWrite(Globals::MCPIOs[0], 15, doutstates[1]);
-  bitWrite(Globals::MCPIOs[1], 7, doutstates[2]);
-  bitWrite(Globals::MCPIOs[1], 15, doutstates[3]);
-  mcp1.writeGPIOAB(Globals::MCPIOs[0]);
-  mcp2.writeGPIOAB(Globals::MCPIOs[1]);
+  // Inputs not inversed (logic 1 means draw current from 5V), but we are working in inverted logic due to inputs
+  bitWrite(Globals::MCPIOs[0], 7, !doutstates[0]);
+  bitWrite(Globals::MCPIOs[0], 15, !doutstates[1]);
+  bitWrite(Globals::MCPIOs[1], 7, !doutstates[2]);
+  bitWrite(Globals::MCPIOs[1], 15, !doutstates[3]);
+  uint16_t gpio1 = ~(Globals::MCPIOs[0]);
+  uint16_t gpio2 = ~(Globals::MCPIOs[1]);
+  // Since refresh outputs over I2C is slow, alternate
+  if (tickCounter % 2 == 0) {
+    mcp1.writeGPIOAB(gpio1);
+  } else {
+    mcp2.writeGPIOAB(gpio2);
+  }
 }
 
 uint16_t lastmcuio = 0;
@@ -204,11 +221,11 @@ void ReadDIn() {
   for (int i = 0; i < 7; i++) {
     // MCP1 bits i=0..6 and j=8..14 to 0..13 (14 bits)
     volatile int j = i + 8;
-    Globals::DIn[i] = bitRead(Globals::MCPIOs[0], i);       // MCP1:GPA 0..6, =1 when pressed, =0 when released
-    Globals::DIn[j-1] = bitRead(Globals::MCPIOs[0], j);       // MCP1:GPB 8..14
+    Globals::DIn[i] = bitRead(Globals::MCPIOs[0], i);      // MCP1:GPA 0..6, =1 when pressed, =0 when released
+    Globals::DIn[j - 1] = bitRead(Globals::MCPIOs[0], j);  // MCP1:GPB 8..14
 
-    Globals::DIn[i + 14] = bitRead(Globals::MCPIOs[1], i);  // MCP2:GPA 0..6
-    Globals::DIn[j-1 + 14] = bitRead(Globals::MCPIOs[1], j);  // MCP2:GPB 8..14
+    Globals::DIn[i + 14] = bitRead(Globals::MCPIOs[1], i);      // MCP2:GPA 0..6
+    Globals::DIn[j - 1 + 14] = bitRead(Globals::MCPIOs[1], j);  // MCP2:GPB 8..14
   }
 
   // remap from mcu din numbering to internal IO numbering 28..31
@@ -246,7 +263,7 @@ void ProcessDigitalInput(int index, bool newstate) {
   Serial.print(newstate, HEX);
   Serial.print(" mapto ");
   Serial.println(dinDB.MapTo, HEX);
-  
+
   switch (dinDB.Type) {
     case Config::MappingType::Key:
       {
@@ -292,7 +309,7 @@ void ProcessDigitalInput(int index, bool newstate) {
 #endif
       }
       break;
-      case Config::MappingType::MouseAxisIncr:
+    case Config::MappingType::MouseAxisIncr:
       {
 #ifdef USE_MOUSE
         if (newstate) {
@@ -403,11 +420,11 @@ void RefreshIOs() {
   uint32_t start = micros();
   // Refresh to Globals::
   ReadDIn();
-  WriteDOut();
   ReadAIn();
+  WriteDOut();
   WriteAOut();
   uint32_t end = micros();
-  Globals::lagtimeRead = end - start;
+  Globals::ioReadTime_us = end - start;
 
   // Loop on Globals
   for (int i = 0; i < NB_DIGITALINPUTS; i++) {
@@ -461,10 +478,34 @@ void doEmulation() {
 
 
 
-uint16_t tickCounter = 0;
+uint32_t lastrun_us = 0;
 void loop() {
-  // Current time
-  //uint32_t now_ms = millis();
+
+  //---------------------------------------------------------------------------
+  // Throttle
+  //---------------------------------------------------------------------------
+
+  // Make the loop rate close to selected delay
+  uint32_t now_us = micros();
+  Globals::refreshRate_us = (uint16_t)(now_us - lastrun_us);
+  lastrun_us = now_us;
+
+  //---------------------------------------------------------------------------
+  // IOs
+  //---------------------------------------------------------------------------
+
+  // Read/Write all IOs
+  RefreshIOs();
+
+  //---------------------------------------------------------------------------
+  // Emulation of keyboard/mouse/joystick
+  //---------------------------------------------------------------------------
+
+  // Perform emulation at a slower loop rate
+  //if ((tickCounter % 2) == 0) {
+  doEmulation();
+  //}
+
 
   //---------------------------------------------------------------------------
   // Communication
@@ -481,19 +522,8 @@ void loop() {
   // Process serial command
   Protocol::ProcessOneMessage();
 
-  // Read/Write all IOs
-  RefreshIOs();
-
-  //---------------------------------------------------------------------------
-  // Emulation of keyboard/mouse/joystick
-  //---------------------------------------------------------------------------
-
-  // Perform emulation at a slower loop rate
-  //if ((tickCounter % 2) == 0) {
-    doEmulation();
-  //}
-
-
-  // Throttle the loop to make it close to 1 ms
-  delayMicroseconds(100);
+  // Arduino stuff will run after this method
+  if (Config::ConfigFile.Delay_us > 0) {
+    delayMicroseconds(Config::ConfigFile.Delay_us);
+  }
 }

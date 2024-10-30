@@ -45,14 +45,6 @@ void SetupPort() {
 #else
   // Serial Timeout 1000ms
   Serial.setTimeout(1000);
-
-  // Wait until USB ready or after 2x10ms
-  /*
-  delay(10);
-  while ((Serial.availableForWrite() == 0) && (millis() < 10)) {
-    delay(1);
-  }
-  */
 #endif
 }
 
@@ -127,9 +119,9 @@ void SendStatusFrame() {
   Serial.print(Globals::AOut[2], HEX);
   Serial.print(" ao3=");
   Serial.print(Globals::AOut[3], HEX);
- 
-  Serial.print(" time=");
-  Serial.print(Globals::lagtimeRead);
+
+  Serial.print(" rrate=");
+  Serial.print(Globals::refreshRate_us);
   Serial.print(" us");
   SendEOF();
 }
@@ -157,6 +149,7 @@ void SendKeyText(const String &key, const String &txt) {
 }
 
 void SendKeyValuepair(const String &msg, const String &key, uint32_t value, int ndigits) {
+  
   String buffer;
   buffer += msg;
   buffer += key;
@@ -193,8 +186,9 @@ typedef struct
 // Parameter list
 static const DictionaryParamEntry DictionaryParam[] = {
   { "serialspeed", BYTE, (void *)&Config::ConfigFile.SerialSpeed },
-  { "options", UINT8, (void *)&Config::ConfigFile.Options },
+  { "delay", UINT16, (void *)&Config::ConfigFile.Delay_us },
   { "klay", BYTE, (void *)&Config::ConfigFile.KeybLayout },
+  { "emode", BYTE, (void *)&Config::ConfigFile.EmulationMode },
 };
 
 // command handlers
@@ -441,6 +435,20 @@ int ProcessOneMessage() {
       while (index < read) {
 
         switch (msg[index++]) {
+          case '~':
+            {
+              // Reset Board
+              Utils::SoftwareReboot();
+            }
+            break;
+          case '$':
+            {
+              // Command line, until newline
+              InterpretCommand(&msg[0] + index);
+              index = read;
+            }
+            break;
+
           case 'D':
             {
               Globals::VolatileConfig.DebugMode = true;
@@ -486,20 +494,6 @@ int ProcessOneMessage() {
             }
             break;
 
-          case '~':
-            {
-              // Reset Board
-              Utils::SoftwareReboot();
-            }
-            break;
-          case '$':
-            {
-              // Command line, until newline
-              InterpretCommand(&msg[0] + index);
-              index = read;
-            }
-            break;
-
           case 'U':
             {
               // Send single status frame
@@ -513,7 +507,6 @@ int ProcessOneMessage() {
             {
               // Start streaming
               Globals::VolatileConfig.DoStreaming = true;
-              //SendDebugMessageFrame(F("Start streaming"));
               index = read;
             }
             break;
@@ -522,7 +515,6 @@ int ProcessOneMessage() {
             {
               // Halt streaming
               Globals::VolatileConfig.DoStreaming = false;
-              //SendDebugMessageFrame(F("Stop streaming"));
               index = read;
             }
             break;

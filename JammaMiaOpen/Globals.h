@@ -10,12 +10,13 @@ namespace Globals {
 class InternalConfig {
 public:
   bool DebugMode = false;
-  bool DoStreaming = true;
+  bool DoStreaming = false;
 };
 
 extern InternalConfig VolatileConfig;
 
-extern uint32_t lagtimeRead;
+extern uint16_t ioReadTime_us;
+extern uint16_t refreshRate_us;
 
 extern uint16_t MCPIOs[2];
 extern uint16_t MCUIOs;
@@ -28,7 +29,5 @@ extern int16_t AIn[NB_ANALOGINPUTS];
 extern bool DOut[NB_DIGITALOUTPUTS];
 // All analog outputs
 extern int16_t AOut[NB_ANALOGOUTPUTS];
-
-extern bool LicenseOK;
 
 }
