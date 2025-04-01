@@ -189,8 +189,9 @@ void ResetConfig() {
   // 4x analog sticks
   for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
     ConfigFile.AnalogInDB[i].Type = MappingType::JoyAxis;
-    ConfigFile.AnalogInDB[i].MapToPos = i;  // X/Y/Z
+    ConfigFile.AnalogInDB[i].MapToPos = i%2 + ((i<2)?0:(byte)(1 << 7));  // X/Y/Z
     ConfigFile.AnalogInDB[i].MapToNeg = 0;  // X/Y/Z
+
     ConfigFile.AnalogDeadzoneMinMax[i][0] = 0x60;
     ConfigFile.AnalogDeadzoneMinMax[i][1] = 0x80;
   }
