@@ -9,6 +9,7 @@
 #include <Joystick.h>
 
 //#define DEBUG_PRINTF
+//#define DEBUG_PRINTF_ANALOG
 
 #define JOYSTICK_COUNT 2
 
@@ -158,7 +159,7 @@ void SetAxis(byte axis, int32_t value) {
       break;
   }
 
-#ifdef DEBUG_PRINTF
+#ifdef DEBUG_PRINTF_ANALOG
   Serial.print(F("joy P"));
   Serial.print(p, HEX);
   Serial.print(F(" axis "));
@@ -174,9 +175,6 @@ void UpdateToPC() {
       continue;
     Joystick[i]->sendState();
   }
-#ifdef DEBUG_PRINTF
-  Serial.println(F("joy update"));
-#endif
 }
 
 }

@@ -17,6 +17,8 @@
 
 #endif
 
+//#define DEBUG_PRINTF
+
 namespace Config {
 
 EEPROM_CONFIG ConfigFile;
@@ -186,7 +188,7 @@ void ResetConfig() {
     ConfigFile.DigitalInB[i + 12 + 14].Type = MappingType::JoyButton;
     ConfigFile.DigitalInB[i + 12 + 14].MapTo = (byte)(i + 8) + (byte)(1 << 7);
   }
-  // 4x analog sticks
+  // 4x analog sticks on analog inputs screw terminals
   for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
     ConfigFile.AnalogInDB[i].Type = MappingType::JoyAxis;
     ConfigFile.AnalogInDB[i].MapToPos = i%2 + ((i<2)?0:(byte)(1 << 7));  // X/Y/Z
@@ -197,14 +199,18 @@ void ResetConfig() {
   }
 
 #endif
-  /*
+
+#ifdef DEBUG_PRINTF
+  Serial.println(F("Buttons config: type 1=keyb, 2=joy axes, 3=joy HAT, 4=joy btn, 5=mouse axes, 6=mouse btn."));
+  Serial.println(F("List of configured digital inputs (0x8X means player 2):"));
   for (uint8_t i = 0; i < sizeof(ConfigFile.DigitalInB) / sizeof(ConfigFile.DigitalInB[0]); i++) {
+    Serial.print(F("din "));
     Serial.print(i);
-    Serial.print(" type="); Serial.print(ConfigFile.DigitalInB[i].Type);
-    Serial.print(" mapto="); Serial.print(ConfigFile.DigitalInB[i].MapTo, HEX);
+    Serial.print(F(" type=")); Serial.print(ConfigFile.DigitalInB[i].Type);
+    Serial.print(F(" mapto=0x")); Serial.print(ConfigFile.DigitalInB[i].MapTo, HEX);
     Serial.println();
   }
-  */
+#endif
 }
 
 }
