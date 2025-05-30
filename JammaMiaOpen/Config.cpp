@@ -71,8 +71,9 @@ int LoadConfigFromEEPROM() {
 
 // Reset to default values
 void ResetConfig() {
+  memset(&ConfigFile, 0, sizeof(ConfigFile));
   ConfigFile.SerialSpeed = PCSERIAL_BAUDRATE;
-
+  
 #ifdef USE_JOY
   Config::ConfigFile.EmulationMode = Config::EmulationModes::Joystick;
 #else
@@ -89,49 +90,58 @@ void ResetConfig() {
 
 // Map Player1 on MCP1
 #ifdef USE_KEYB
+  ConfigFile.ShiftInput = 14;  // Shift input is "P1-START"
+
   // Emulated keys for all digital inputs
   for (uint8_t i = 0; i < sizeof(ConfigFile.DigitalInB) / sizeof(ConfigFile.DigitalInB[0]); i++) {
     ConfigFile.DigitalInB[i].Type = MappingType::Key;
+    ConfigFile.DigitalInB[i].MapToShifted = 0;  // default to no alternative mapping
   }
 
   // Emulated keys, using MAME default layout
-  ConfigFile.DigitalInB[0].MapTo = KEY_LEFT_CTRL;     // P1-But1
-  ConfigFile.DigitalInB[1].MapTo = KEY_LEFT_ALT;      // P1-But2
-  ConfigFile.DigitalInB[2].MapTo = ' ';               // P1-But3
-  ConfigFile.DigitalInB[3].MapTo = KEY_LEFT_SHIFT;    // P1-But4
-  ConfigFile.DigitalInB[4].MapTo = 'z';               // P1-But5
-  ConfigFile.DigitalInB[5].MapTo = 'x';               // P1-But6
-  ConfigFile.DigitalInB[6].MapTo = 'c';               // P1-But7
-  ConfigFile.DigitalInB[7].MapTo = 'v';               // P1-But8
-  ConfigFile.DigitalInB[8].MapTo = KEY_UP_ARROW;      // P1-Up
-  ConfigFile.DigitalInB[9].MapTo = KEY_DOWN_ARROW;    // P1-Down
-  ConfigFile.DigitalInB[10].MapTo = KEY_LEFT_ARROW;   // P1-Left
-  ConfigFile.DigitalInB[11].MapTo = KEY_RIGHT_ARROW;  // P1-Right
-  ConfigFile.DigitalInB[12].MapTo = '5';              // '5' for COIN1
-  ConfigFile.DigitalInB[13].MapTo = '1';              // '1' for START1
+  ConfigFile.DigitalInB[0].MapTo = KEY_LEFT_CTRL;       // P1-But1
+  ConfigFile.DigitalInB[0].MapToShifted = '5';          // P1-But1 shifted
+  ConfigFile.DigitalInB[1].MapTo = KEY_LEFT_ALT;        // P1-But2
+  ConfigFile.DigitalInB[2].MapTo = ' ';                 // P1-But3
+  ConfigFile.DigitalInB[3].MapTo = KEY_LEFT_SHIFT;      // P1-But4
+  ConfigFile.DigitalInB[4].MapTo = 'z';                 // P1-But5
+  ConfigFile.DigitalInB[5].MapTo = 'x';                 // P1-But6
+  ConfigFile.DigitalInB[6].MapTo = 'c';                 // P1-But7
+  ConfigFile.DigitalInB[7].MapTo = 'v';                 // P1-But8
+  ConfigFile.DigitalInB[8].MapTo = KEY_UP_ARROW;        // P1-Up
+  ConfigFile.DigitalInB[8].MapToShifted = '~';          // P1-Up shifted
+  ConfigFile.DigitalInB[9].MapTo = KEY_DOWN_ARROW;      // P1-Down
+  ConfigFile.DigitalInB[9].MapToShifted = 'p';          // P1-Down shifted
+  ConfigFile.DigitalInB[10].MapTo = KEY_LEFT_ARROW;     // P1-Left
+  ConfigFile.DigitalInB[10].MapToShifted = KEY_RETURN;  // P1-Left shifted
+  ConfigFile.DigitalInB[11].MapTo = KEY_RIGHT_ARROW;    // P1-Right
+  ConfigFile.DigitalInB[11].MapToShifted = KEY_TAB;     // P1-Right shifted
+  ConfigFile.DigitalInB[12].MapTo = '5';                // P1-COIN1
+  ConfigFile.DigitalInB[13].MapTo = '1';                // P1-START1
 
   // Map Player2 on MCP2
   ConfigFile.DigitalInB[14].MapTo = 'a';  // P2-But1
   ConfigFile.DigitalInB[15].MapTo = 's';  // P2-But2
   ConfigFile.DigitalInB[16].MapTo = 'q';  // P2-But3
   ConfigFile.DigitalInB[17].MapTo = 'w';  // P2-But4
-  ConfigFile.DigitalInB[18].MapTo = 'e';  // P2-But5
-  ConfigFile.DigitalInB[19].MapTo = 'b';  // P2-But6
-  ConfigFile.DigitalInB[20].MapTo = 'n';  // P2-But7
-  ConfigFile.DigitalInB[21].MapTo = 'm';  // P2-But8
+  ConfigFile.DigitalInB[18].MapTo = 'i';  // P2-But5
+  ConfigFile.DigitalInB[19].MapTo = 'k';  // P2-But6
+  ConfigFile.DigitalInB[20].MapTo = 'j';  // P2-But7
+  ConfigFile.DigitalInB[21].MapTo = 'l';  // P2-But8
 
-  ConfigFile.DigitalInB[22].MapTo = 'r';  // P2-Up
-  ConfigFile.DigitalInB[23].MapTo = 'f';  // P2-Down
-  ConfigFile.DigitalInB[24].MapTo = 'd';  // P2-Left
-  ConfigFile.DigitalInB[25].MapTo = 'g';  // P2-Right
-  ConfigFile.DigitalInB[26].MapTo = '6';  // '6' for COIN2
-  ConfigFile.DigitalInB[27].MapTo = '2';  // '1' for START2
+  ConfigFile.DigitalInB[22].MapTo = 'r';             // P2-Up
+  ConfigFile.DigitalInB[23].MapTo = 'f';             // P2-Down
+  ConfigFile.DigitalInB[24].MapTo = 'd';             // P2-Left
+  ConfigFile.DigitalInB[25].MapTo = 'g';             // P2-Right
+  ConfigFile.DigitalInB[26].MapTo = '6';             // P2-COIN2
+  ConfigFile.DigitalInB[27].MapTo = '2';             // P2-START2
+  ConfigFile.DigitalInB[27].MapToShifted = KEY_ESC;  // P2-START2 shifted
 
   // Map Service buttons that are on MCU pins
   ConfigFile.DigitalInB[28].MapTo = KEY_F2;  // 'F2' for TEST
-  ConfigFile.DigitalInB[29].MapTo = '9';     // '9' for SERVICE
+  ConfigFile.DigitalInB[29].MapTo = KEY_F2;  // 'F1' for SERVICE
   ConfigFile.DigitalInB[30].MapTo = KEY_F4;  // 'F4' for TEST2
-  ConfigFile.DigitalInB[31].MapTo = 't';     // 't' for TILT
+  ConfigFile.DigitalInB[31].MapTo = KEY_F3;  // 'F3' for TILT
 #endif
 
 #ifdef USE_MOUSE
@@ -153,7 +163,7 @@ void ResetConfig() {
     ConfigFile.DigitalInB[i + 8 + 14].Type = MappingType::MouseAxisIncr;
     ConfigFile.DigitalInB[i + 8 + 14].MapTo = (byte)(1 << i) + (byte)(1 << 7);
   }
-  
+
 #endif
 
 
@@ -191,8 +201,8 @@ void ResetConfig() {
   // 4x analog sticks on analog inputs screw terminals
   for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
     ConfigFile.AnalogInDB[i].Type = MappingType::JoyAxis;
-    ConfigFile.AnalogInDB[i].MapToPos = i%2 + ((i<2)?0:(byte)(1 << 7));  // X/Y/Z
-    ConfigFile.AnalogInDB[i].MapToNeg = 0;  // X/Y/Z
+    ConfigFile.AnalogInDB[i].MapToPos = i % 2 + ((i < 2) ? 0 : (byte)(1 << 7));  // X/Y/Z
+    ConfigFile.AnalogInDB[i].MapToNeg = 0;                                       // X/Y/Z
 
     ConfigFile.AnalogDeadzoneMinMax[i][0] = 0x60;
     ConfigFile.AnalogDeadzoneMinMax[i][1] = 0x80;
@@ -206,8 +216,10 @@ void ResetConfig() {
   for (uint8_t i = 0; i < sizeof(ConfigFile.DigitalInB) / sizeof(ConfigFile.DigitalInB[0]); i++) {
     Serial.print(F("din "));
     Serial.print(i);
-    Serial.print(F(" type=")); Serial.print(ConfigFile.DigitalInB[i].Type);
-    Serial.print(F(" mapto=0x")); Serial.print(ConfigFile.DigitalInB[i].MapTo, HEX);
+    Serial.print(F(" type="));
+    Serial.print(ConfigFile.DigitalInB[i].Type);
+    Serial.print(F(" mapto=0x"));
+    Serial.print(ConfigFile.DigitalInB[i].MapTo, HEX);
     Serial.println();
   }
 #endif

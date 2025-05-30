@@ -59,7 +59,7 @@ void setup() {
   for (int i = 0; i < (int)(sizeof(MCUAnalogOutpin) / sizeof(MCUAnalogOutpin[0])); i++) {
     pinMode(MCUAnalogOutpin[i], INPUT_PULLUP);
   }
-  
+
   bool epromResetDone = false;
 
   // Maintain TEST2 + TILT to force reset of configuration
@@ -201,6 +201,8 @@ void RefreshMCPOutputs(bool doutstates[4]) {
 }
 
 uint16_t lastmcuio = 0;
+volatile bool lastDInState[NB_DIGITALINPUTS] = {};
+bool isShifted = false;
 
 void RefreshMCUInputs() {
   // Digital
@@ -210,6 +212,7 @@ void RefreshMCUInputs() {
   }
   Globals::MCUIOs = mcuio;
 }
+
 
 void ReadDIn() {
   // Update MCP inputs
@@ -232,6 +235,24 @@ void ReadDIn() {
   for (int i = 0; i < 4; i++) {
     // MCU din 8, 16, 14, 15
     Globals::DIn[i + 28] = bitRead(Globals::MCUIOs, i);  // =1 when pressed, =0 when released
+  }
+
+  // Do we have a "shift input" configured?
+  if (Config::ConfigFile.ShiftInput > 0) {
+    // Check the input state
+    if (Globals::DIn[Config::ConfigFile.ShiftInput - 1]) {
+      // Save "shifted" state
+      isShifted = true;
+    } else {
+      isShifted = false;
+      // Clear "shifted state" of all buttons, just in case
+      for (int i = 0; i < NB_DIGITALINPUTS; i++) {
+        auto dinDB = Config::ConfigFile.DigitalInB[i];
+        if ((dinDB.MapToShifted > 0) && (lastDInState[i])) {
+          Keyb::Release(dinDB.MapToShifted);
+        }
+      }
+    }
   }
 }
 
@@ -268,10 +289,14 @@ void ProcessDigitalInput(int index, bool newstate) {
     case Config::MappingType::Key:
       {
 #ifdef USE_KEYB
+        byte kmap = dinDB.MapTo;
+        if (isShifted && (dinDB.MapToShifted > 0)) {
+          kmap = dinDB.MapToShifted;
+        }
         if (newstate) {
-          Keyb::Press(dinDB.MapTo);
+          Keyb::Press(kmap);
         } else {
-          Keyb::Release(dinDB.MapTo);
+          Keyb::Release(kmap);
         }
 #endif
       }
@@ -413,8 +438,6 @@ void ProcessAnalogInput(int index, int value) {
 }
 
 
-
-volatile bool lastDInState[NB_DIGITALINPUTS] = {};
 
 void RefreshIOs() {
   uint32_t start = micros();

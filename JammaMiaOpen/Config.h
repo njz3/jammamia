@@ -118,10 +118,12 @@ enum MappingType : byte {
 typedef struct __attribute__((__packed__)) {
   // Type of mapping
   MappingType Type;
-  // Index of keyscan code, joy or mouse axis, joy or mouse button
+  // Index of keyscan code (0 being none), joy or mouse axis, joy or mouse button
   // For axis and buttons, the 7th MSB (0b10000000) gives the player selection P1-P2, bits 6 to 0 are axis or button index
   // For HAT switch, the 7thMSB gives the player selection P1-P2, 5&6th gives the hat switch number, 3 to 0 gives the direction
   byte MapTo;
+  // Index of keyscan code when using shifted/alternative map (0 being not used)
+  byte MapToShifted;
   // Optional name
   char Name[4];
 } DigitalInputConfig;
@@ -166,6 +168,8 @@ typedef struct __attribute__((__packed__)) {
   uint8_t JoyNumberOfAxes;
   // Number of joy's HAT switch between 0..3 (MAX_HAT)
   uint8_t JoyNumberOfHAT;
+  // index of digital input that is used to use shifted/alternative map. 0 means no shifted input is configured
+  uint8_t ShiftInput;
 } EEPROM_CONFIG;
 
 // ram
