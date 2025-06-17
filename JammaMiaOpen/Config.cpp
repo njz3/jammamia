@@ -77,7 +77,7 @@ void ResetConfig() {
 #ifdef USE_JOY
   Config::ConfigFile.EmulationMode = Config::EmulationModes::Joystick;
 #else
-#ifdef USE_KEY
+#ifdef USE_KEYB
   Config::ConfigFile.EmulationMode = Config::EmulationModes::Keyboard;
 #endif
 #endif
