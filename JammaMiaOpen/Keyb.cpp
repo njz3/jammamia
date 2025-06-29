@@ -15,39 +15,39 @@
 
 namespace Keyb {
 
-static KeyboardNKey_ *Keyboard = nullptr;
+static KeyboardNKey_ *pKeyboard = nullptr;
 
 void Setup() {
   Serial.println(F("MKeyboard emulation enabled"));
 
-  Keyboard = new KeyboardNKey_();
+  pKeyboard = &Keyboard;
   switch (Config::ConfigFile.KeybLayout) {
     case 1:
-      Keyboard->begin(KeyboardLayout_fr_FR);
+      pKeyboard->begin(KeyboardLayout_fr_FR);
       break;
     case 2:
-      Keyboard->begin(KeyboardLayout_de_DE);
+      pKeyboard->begin(KeyboardLayout_de_DE);
       break;
     case 3:
-      Keyboard->begin(KeyboardLayout_it_IT);
+      pKeyboard->begin(KeyboardLayout_it_IT);
       break;
     case 4:
-      Keyboard->begin(KeyboardLayout_es_ES);
+      pKeyboard->begin(KeyboardLayout_es_ES);
       break;
 
     case 0:
     default:
-      Keyboard->begin(KeyboardLayout_en_US);
+      pKeyboard->begin(KeyboardLayout_en_US);
       break;
   }
   // Start by clearing all keys just in case
-  Keyboard->releaseAll();
+  pKeyboard->releaseAll();
 }
 
 void Press(byte key) {
-  if (Keyboard == nullptr)
+  if (pKeyboard == nullptr)
     return;
-  Keyboard->press(key);
+  pKeyboard->press(key);
 
 #ifdef DEBUG_PRINTF
   Serial.print(F("keyb press: 0x"));
@@ -56,9 +56,9 @@ void Press(byte key) {
 }
 
 void Release(byte key) {
-  if (Keyboard == nullptr)
+  if (pKeyboard == nullptr)
     return;
-  Keyboard->release(key);
+  pKeyboard->release(key);
 
 #ifdef DEBUG_PRINTF
   Serial.print(F("keyb release: 0x"));
@@ -67,9 +67,9 @@ void Release(byte key) {
 }
 
 void UpdateToPC() {
-  if (Keyboard == nullptr)
+  if (pKeyboard == nullptr)
     return;
-  Keyboard->sendState();
+  pKeyboard->sendState();
 #ifdef DEBUG_PRINTF
   Serial.println(F("keyb update"));
 #endif

@@ -76,10 +76,13 @@ void ResetConfig() {
   
 #ifdef USE_JOY
   Config::ConfigFile.EmulationMode = Config::EmulationModes::Joystick;
+  #ifdef USE_KEYB
+    Config::ConfigFile.EmulationMode = Config::EmulationModes::JoystickAndKeyboard;
+  #endif
 #else
-#ifdef USE_KEYB
-  Config::ConfigFile.EmulationMode = Config::EmulationModes::Keyboard;
-#endif
+  #ifdef USE_KEYB
+    Config::ConfigFile.EmulationMode = Config::EmulationModes::Keyboard;
+  #endif
 #endif
 
   ConfigFile.Delay_us = 0;
@@ -139,7 +142,7 @@ void ResetConfig() {
 
   // Map Service buttons that are on MCU pins
   ConfigFile.DigitalInB[28].MapTo = KEY_F2;  // 'F2' for TEST
-  ConfigFile.DigitalInB[29].MapTo = KEY_F2;  // 'F1' for SERVICE
+  ConfigFile.DigitalInB[29].MapTo = KEY_F1;  // 'F1' for SERVICE
   ConfigFile.DigitalInB[30].MapTo = KEY_F4;  // 'F4' for TEST2
   ConfigFile.DigitalInB[31].MapTo = KEY_F3;  // 'F3' for TILT
 #endif
