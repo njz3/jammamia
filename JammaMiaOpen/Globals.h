@@ -11,6 +11,7 @@ class InternalConfig {
 public:
   bool DebugMode = false;
   bool DoStreaming = false;
+  bool DoEmulation = true;
 };
 
 extern InternalConfig VolatileConfig;

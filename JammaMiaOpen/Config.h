@@ -6,7 +6,7 @@
 #include <Arduino.h>
 
 #define USE_KEYB
-#define USE_JOY
+//#define USE_JOY
 //#define USE_MOUSE
 
 //-----------------------------------------------------------------------------
@@ -131,6 +131,12 @@ typedef struct __attribute__((__packed__)) {
   // For axis and buttons, the 7th MSB (0b10000000) gives the player selection P1-P2, bits 6 to 0 are axis or button index
   // For HAT switch, the 7thMSB gives the player selection P1-P2, 5&6th gives the hat switch number, 3 to 0 gives the direction
   byte MapToNeg;
+  // Analog dead zone min/max (x4) for center zone of analog values, 0 (min) .. 0xFF (max)
+  // Minimum value is usually 0x60 (center being 80)
+  uint8_t DeadzoneMin;
+  // Analog dead zone min/max (x4) for center zone of analog values, 0 (min) .. 0xFF (max)
+  // Maximum value is usually 0x80 (center being 80)
+  uint8_t DeadzoneMax;
   // Optional name
   char Name[3];
 } AnalogInputConfig;
@@ -149,8 +155,6 @@ typedef struct __attribute__((__packed__)) {
   DigitalInputConfig DigitalInB[NB_DIGITALINPUTS];
   // analog inputs configuration
   AnalogInputConfig AnalogInDB[NB_ANALOGINPUTS];
-  // Analog dead zone min/max (x4) for center zone of analog values, 0 (min) .. 0xFF (max)
-  uint8_t AnalogDeadzoneMinMax[NB_ANALOGINPUTS][2];
   // Number of joy's buttons between 0..32
   uint8_t JoyNumberOfButtons;
   // Number of joy's axes between 0..7

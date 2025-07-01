@@ -69,15 +69,16 @@ int LoadConfigFromEEPROM() {
   return 1;
 }
 
-/*
+
 void PrintConfig() {
-  //Serial.println(F("Buttons config: type 1=keyb, 2=joy axes, 3=joy HAT, 4=joy btn, 5=mouse axes, 6=mouse btn."));
-  //Serial.println(F("List of configured digital inputs (0x8X means player 2):"));
+#ifdef DEBUG_PRINTF
+  Serial.println(F("Buttons config: type 1=keyb, 2=joy axes, 3=joy HAT, 4=joy btn, 5=mouse axes, 6=mouse btn."));
+  Serial.println(F("List of configured digital inputs (0x8X means player 2):"));
   for (uint8_t i = 0; i < sizeof(ConfigFile.DigitalInB) / sizeof(ConfigFile.DigitalInB[0]); i++) {
     Serial.print(F("di "));
     Serial.print(i);
     Serial.print(F(" tp="));
-    Serial.print(ConfigFile.DigitalInB[i].Type);
+    Serial.print(ConfigFile.DigitalInB[i].Type, HEX);
     Serial.print(F(" mp="));
     Serial.print(ConfigFile.DigitalInB[i].MapTo, HEX);
     Serial.print(F(" sh="));
@@ -86,21 +87,26 @@ void PrintConfig() {
     Serial.print(ConfigFile.DigitalInB[i].Name);
     Serial.println();
   }
-  
   for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
     Serial.print(F("ai "));
     Serial.print(i);
     Serial.print(F(" tp="));
-    Serial.print(ConfigFile.AnalogInDB[i].Type);
-    Serial.print(F(" ne="));
-    Serial.print(ConfigFile.AnalogInDB[i].MapToNeg);
+    Serial.print(ConfigFile.AnalogInDB[i].Type, HEX);
     Serial.print(F(" po="));
-    Serial.print(ConfigFile.AnalogInDB[i].MapToPos);
+    Serial.print(ConfigFile.AnalogInDB[i].MapToPos, HEX);
+    Serial.print(F(" ne="));
+    Serial.print(ConfigFile.AnalogInDB[i].MapToNeg, HEX);
+    Serial.print(F(" dmi="));
+    Serial.print(ConfigFile.AnalogInDB[i].DeadzoneMin, HEX);
+    Serial.print(F(" dma="));
+    Serial.print(ConfigFile.AnalogInDB[i].DeadzoneMax, HEX);
     Serial.print(F(" nm="));
     Serial.print(ConfigFile.DigitalInB[i].Name);
+    Serial.println();
   }
+#endif
 }
-*/
+
 // Reset to default values
 void ResetConfig() {
   memset(&ConfigFile, 0, sizeof(ConfigFile));
@@ -143,16 +149,7 @@ void ResetConfig() {
     ConfigFile.DigitalInB[i + 12 + 14].Type = MappingType::JoyButton;
     ConfigFile.DigitalInB[i + 12 + 14].MapTo = (byte)(i + 8) + (byte)(1 << 7);
   }
-  // 4x analog sticks on analog inputs screw terminals
-  for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
-    ConfigFile.AnalogInDB[i].Type = MappingType::JoyAxis;
-    ConfigFile.AnalogInDB[i].MapToPos = i % 2 + ((i < 2) ? 0 : (byte)(1 << 7));  // X/Y/Z
-    ConfigFile.AnalogInDB[i].MapToNeg = 0;                                       // X/Y/Z
-
-    ConfigFile.AnalogDeadzoneMinMax[i][0] = 0x60;
-    ConfigFile.AnalogDeadzoneMinMax[i][1] = 0x80;
-  }
-
+  
   // Map Service buttons that are on MCU pins
   ConfigFile.DigitalInB[28].Type = MappingType::JoyButton;  // TEST
   ConfigFile.DigitalInB[28].MapTo = 10;                     // TEST
@@ -162,6 +159,16 @@ void ResetConfig() {
   ConfigFile.DigitalInB[30].MapTo = (byte)(1 << 7) + 10;    // TEST2
   ConfigFile.DigitalInB[31].Type = MappingType::JoyButton;  // TILT
   ConfigFile.DigitalInB[31].MapTo = (byte)(1 << 7) + 11;    // TILT
+
+  // 4x analog sticks on analog inputs screw terminals
+  for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
+    ConfigFile.AnalogInDB[i].Type = MappingType::JoyAxis;
+    ConfigFile.AnalogInDB[i].MapToPos = i % 2 + ((i < 2) ? 0 : (byte)(1 << 7));  // X/Y/Z
+    ConfigFile.AnalogInDB[i].MapToNeg = 0;                                       // X/Y/Z
+
+    ConfigFile.AnalogInDB[i].DeadzoneMin = 0x60;  // dead zone min (x4) to detect axis leave center zone
+    ConfigFile.AnalogInDB[i].DeadzoneMax = 0xA0;  // dead zone max (x4) to detect axis leave for center zone
+  }
 #endif
 
 #if defined(USE_KEYB) && !defined(USE_JOY)
@@ -219,6 +226,23 @@ void ResetConfig() {
   ConfigFile.DigitalInB[29].MapTo = KEY_F1;  // 'F1' for SERVICE
   ConfigFile.DigitalInB[30].MapTo = KEY_F4;  // 'F4' for TEST2
   ConfigFile.DigitalInB[31].MapTo = KEY_F3;  // 'F3' for TILT
+
+  // 4x analog sticks on analog inputs screw terminals mapped to KEYPAD
+  for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
+    ConfigFile.AnalogInDB[i].Type = MappingType::Key;
+    ConfigFile.AnalogInDB[i].DeadzoneMin = 0x60;  // dead zone min (x4) to detect axis leave center zone
+    ConfigFile.AnalogInDB[i].DeadzoneMax = 0xA0;  // dead zone max (x4) to detect axis leave for center zone
+  }
+  /*
+  ConfigFile.AnalogInDB[0].MapToPos = KEY_KP_8;
+  ConfigFile.AnalogInDB[0].MapToNeg = KEY_KP_2;
+  ConfigFile.AnalogInDB[1].MapToPos = KEY_KP_6;
+  ConfigFile.AnalogInDB[1].MapToNeg = KEY_KP_4;
+  ConfigFile.AnalogInDB[2].MapToPos = KEY_KP_9;
+  ConfigFile.AnalogInDB[2].MapToNeg = KEY_KP_1;
+  ConfigFile.AnalogInDB[3].MapToPos = KEY_KP_7;
+  ConfigFile.AnalogInDB[3].MapToNeg = KEY_KP_3;
+  */
 #endif
 
 
@@ -256,15 +280,6 @@ void ResetConfig() {
     ConfigFile.DigitalInB[i + 12 + 14].Type = MappingType::JoyButton;
     ConfigFile.DigitalInB[i + 12 + 14].MapTo = (byte)(i + 8) + (byte)(1 << 7);
   }
-  // 4x analog sticks on analog inputs screw terminals
-  for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
-    ConfigFile.AnalogInDB[i].Type = MappingType::JoyAxis;
-    ConfigFile.AnalogInDB[i].MapToPos = i % 2 + ((i < 2) ? 0 : (byte)(1 << 7));  // X/Y/Z
-    ConfigFile.AnalogInDB[i].MapToNeg = 0;                                       // X/Y/Z
-
-    ConfigFile.AnalogDeadzoneMinMax[i][0] = 0x60;
-    ConfigFile.AnalogDeadzoneMinMax[i][1] = 0x80;
-  }
 
   // Map Service buttons that are on MCU pins
   for (uint8_t i = 0; i < 4; i++) {
@@ -274,6 +289,16 @@ void ResetConfig() {
   ConfigFile.DigitalInB[29].MapTo = KEY_F1;  // 'F1' for SERVICE
   ConfigFile.DigitalInB[30].MapTo = KEY_F4;  // 'F4' for TEST2
   ConfigFile.DigitalInB[31].MapTo = KEY_F3;  // 'F3' for TILT
+
+  // 4x analog sticks on analog inputs screw terminals
+  for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
+    ConfigFile.AnalogInDB[i].Type = MappingType::JoyAxis;
+    ConfigFile.AnalogInDB[i].MapToPos = i % 2 + ((i < 2) ? 0 : (byte)(1 << 7));  // X/Y/Z
+    ConfigFile.AnalogInDB[i].MapToNeg = 0;                                       // X/Y/Z
+
+    ConfigFile.AnalogInDB[i].DeadzoneMin = 0x60;  // dead zone min (x4) to detect axis leave center zone
+    ConfigFile.AnalogInDB[i].DeadzoneMax = 0xA0;  // dead zone max (x4) to detect axis leave for center zone
+  }
 #endif
 
 

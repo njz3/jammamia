@@ -58,6 +58,12 @@ void setup() {
     Config::SaveConfigToEEPROM();
   }
 
+  // Maintain TEST2 only to force no emulation at boot
+  bool stopEmulation = (!digitalReadFast(MCUDigitalInpin[2])) && (digitalReadFast(MCUDigitalInpin[3]));
+  if (stopEmulation) {
+    Globals::VolatileConfig.DoEmulation = false;
+  }
+
   Protocol::SetupPort();
 
 #ifdef DEBUG_PRINTF
@@ -372,24 +378,36 @@ void ProcessDigitalInput(int index, bool newstate) {
 // Threasholds for center and middle deadzone : 0x100 and 0x300
 void ProcessAnalogInput(int index, int value) {
   auto ainDB = Config::ConfigFile.AnalogInDB[index];
+  int16_t min = ((int16_t)ainDB.DeadzoneMin) << 2;
+  int16_t max = ((int16_t)ainDB.DeadzoneMax) << 2;
+
   switch (ainDB.Type) {
 #ifdef USE_KEYB
     case Config::MappingType::Key:
       {
         // Do thing when input is configured for keyboard
+        if (value < min) {
+          Keyb::Press(ainDB.MapToNeg);
+        } else {
+          Keyb::Release(ainDB.MapToNeg);
+        }
+        if (value > max) {
+          Keyb::Press(ainDB.MapToPos);
+        } else {
+          Keyb::Release(ainDB.MapToPos);
+        }
       }
       break;
 #endif
 #ifdef USE_JOY
     case Config::MappingType::JoyAxis:
       {
+        // Only positive mapping is used for analog axes
         Joy::SetAxis(ainDB.MapToPos, value);
       }
       break;
     case Config::MappingType::JoyButton:
       {
-        int16_t min = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][0]) << 2;
-        int16_t max = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][1]) << 2;
         if (value < min) {
           Joy::BtnPress(ainDB.MapToNeg);
           Joy::BtnRelease(ainDB.MapToPos);
@@ -404,8 +422,6 @@ void ProcessAnalogInput(int index, int value) {
       break;
     case Config::MappingType::JoyDirHAT:
       {
-        int16_t min = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][0]) << 2;
-        int16_t max = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][1]) << 2;
         if (value < min) {
           Joy::SetHATSwitch(ainDB.MapToNeg, true);
           Joy::SetHATSwitch(ainDB.MapToPos, false);
@@ -427,8 +443,6 @@ void ProcessAnalogInput(int index, int value) {
       break;
     case Config::MappingType::MouseButton:
       {
-        int16_t min = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][0]) << 2;
-        int16_t max = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][1]) << 2;
         if (value < min) {
           Mou::BtnPress(ainDB.MapToNeg);
           Mou::BtnRelease(ainDB.MapToPos);
@@ -539,7 +553,9 @@ void loop() {
 
   // Perform emulation at a slower loop rate
   //if ((tickCounter % 2) == 0) {
-  doEmulation();
+  if (Globals::VolatileConfig.DoEmulation) {
+    doEmulation();
+  }
   //}
 
 

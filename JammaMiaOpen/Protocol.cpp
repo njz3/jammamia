@@ -228,7 +228,7 @@ void GetHandler(const String &key) {
     }
   }
   if (i == count) {
-   Serial.println((String)F("S03 Key ") + key + F(" not found"));
+    Serial.println((String)F("S03 Key ") + key + F(" not found"));
   }
 }
 
@@ -345,15 +345,17 @@ void SetDInMapHandler(const String &keyval) {
   Config::ConfigFile.DigitalInB[din].MapTo = mapp;
   Config::ConfigFile.DigitalInB[din].MapToShifted = shiftedmap;
   token = Utils::Token(keyval, ' ', 4);
-  const char* c_name = token.c_str();
+  const char *c_name = token.c_str();
   strncpy(Config::ConfigFile.DigitalInB[din].Name, c_name, 3);
 }
 
-// setain AIN TYPE MAP SHIFTEDMAP NAME
+// setain AIN TYPE POS NEG DMIN DMAX NAME
 // AIN: analog input axes number
 // TYPE: type value
 // POS: map value when going positive
 // NEG: map value when going negative
+// DMIN: dead zone min value if hat or button, usually 60
+// DMAX: dead zone max value if hat or button, usually 80
 // NAME: Name of analog input (limited to 3 char)
 void SetAInMapHandler(const String &keyval) {
   String token = Utils::Token(keyval, ' ', 0);
@@ -364,11 +366,17 @@ void SetAInMapHandler(const String &keyval) {
   uint8_t pos = (uint32_t)Utils::ConvertHexToInt(token, 2);
   token = Utils::Token(keyval, ' ', 3);
   uint8_t neg = (uint32_t)Utils::ConvertHexToInt(token, 2);
+  token = Utils::Token(keyval, ' ', 4);
+  uint8_t dmin = (uint32_t)Utils::ConvertHexToInt(token, 2);
+  token = Utils::Token(keyval, ' ', 5);
+  uint8_t dmax = (uint32_t)Utils::ConvertHexToInt(token, 2);
   Config::ConfigFile.AnalogInDB[ain].Type = (Config::MappingType)type;
   Config::ConfigFile.AnalogInDB[ain].MapToPos = pos;
   Config::ConfigFile.AnalogInDB[ain].MapToNeg = neg;
-  token = Utils::Token(keyval, ' ', 4);
-  const char* c_name = token.c_str();
+  Config::ConfigFile.AnalogInDB[ain].DeadzoneMin = dmin;
+  Config::ConfigFile.AnalogInDB[ain].DeadzoneMax = dmax;
+  token = Utils::Token(keyval, ' ', 6);
+  const char *c_name = token.c_str();
   strncpy(Config::ConfigFile.AnalogInDB[ain].Name, c_name, 3);
 }
 
@@ -489,6 +497,20 @@ int ProcessOneMessage() {
               index = read;
             }
             break;
+          case 'e':
+            {
+              // Start streaming
+              Globals::VolatileConfig.DoEmulation = false;
+              index = read;
+            }
+            break;
+          case 'E':
+            {
+              // Start streaming
+              Globals::VolatileConfig.DoEmulation = true;
+              index = read;
+            }
+            break;
 
           case 'H':
             {
@@ -528,7 +550,7 @@ int ProcessOneMessage() {
             break;
 
           case 'L':
-            //Config::PrintConfig();
+            Config::PrintConfig();
             index = read;
             break;
 

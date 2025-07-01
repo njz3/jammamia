@@ -104,8 +104,7 @@ char* GetValue(char* data, char separator, int index) {
 // str: input string
 // separator: input char for separator (usually ' ')
 // tokenIdx: index of token to look for
-// length: if token found, length of token in the string. -1 is no token found
-// returns: token postion as a pointer in input string
+// returns: token as string
 String Token(const String& str, const char separator, int tokenIdx) {
   int stringCount = 0;
   String newstr = String(str);
@@ -114,10 +113,10 @@ String Token(const String& str, const char separator, int tokenIdx) {
     goto _error;
 
   // Split the string into substrings
-  while (str.length() > 0) {
+  while (newstr.length() > 0) {
     // Search for separator
-    int index = str.indexOf(separator);
-
+    int index = newstr.indexOf(separator);
+ 
     if (index == -1) {
       // No separator found
 
@@ -128,6 +127,7 @@ String Token(const String& str, const char separator, int tokenIdx) {
       }
       goto _error;
     } else {
+      //Serial.println(index);
       // Separator found
       if (index == 0) {
         // Skip empty entries
