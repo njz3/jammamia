@@ -20,7 +20,9 @@ static MouseN_ *Mouse = nullptr;
 const uint8_t MouseButtons[] = { MOUSE_LEFT, MOUSE_RIGHT, MOUSE_MIDDLE };
 
 void Setup() {
+#ifdef DEBUG_PRINTF
   Serial.println(F("MMouse emulation enabled"));
+#endif
   Mouse = new MouseN_(true);
   Mouse->begin();
 }

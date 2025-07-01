@@ -13,28 +13,7 @@ namespace Protocol {
 
 void SetupPort() {
   // initialize serial communications at maximum baudrate bps:
-  long baudrate = 1000000;
-  switch (Config::ConfigFile.SerialSpeed) {
-    case Config::COM38400:
-      baudrate = 38400;
-      break;
-    case Config::COM57600:
-      baudrate = 57600;
-      break;
-    case Config::COM115200:
-      baudrate = 115200;
-      break;
-    case Config::COM250000:
-      baudrate = 250000;
-      break;
-    case Config::COM500000:
-      baudrate = 500000;
-      break;
-    case Config::COM1000000:
-      baudrate = 1000000;
-      break;
-  }
-  Serial.begin(baudrate);
+  Serial.begin(PCSERIAL_BAUDRATE);
 
 #ifdef WAIT_USB_AT_BOOT
   // Wait until USB ready or after 2x10ms
@@ -98,39 +77,31 @@ void SendStatusFrame() {
   Serial.write('M');
   Serial.print(F("mcp1="));
   Serial.print(Globals::MCPIOs[0], HEX);
-  Serial.print(" mcp2=");
+  Serial.print(F(" mcp2="));
   Serial.print(Globals::MCPIOs[1], HEX);
-  Serial.print(" mcu=");
+  Serial.print(F(" mcu="));
   Serial.print(Globals::MCUIOs, HEX);
-  Serial.print(" an0=");
+  Serial.print(F(" an0="));
   Serial.print(Globals::AIn[0], HEX);
-  Serial.print(" an1=");
+  Serial.print(F(" an1="));
   Serial.print(Globals::AIn[1], HEX);
-  Serial.print(" an2=");
+  Serial.print(F(" an2="));
   Serial.print(Globals::AIn[2], HEX);
-  Serial.print(" an3=");
+  Serial.print(F(" an3="));
   Serial.print(Globals::AIn[3], HEX);
 
-  Serial.print(" ao0=");
+  Serial.print(F(" ao0="));
   Serial.print(Globals::AOut[0], HEX);
-  Serial.print(" ao1=");
+  Serial.print(F(" ao1="));
   Serial.print(Globals::AOut[1], HEX);
-  Serial.print(" ao2=");
+  Serial.print(F(" ao2="));
   Serial.print(Globals::AOut[2], HEX);
-  Serial.print(" ao3=");
+  Serial.print(F(" ao3="));
   Serial.print(Globals::AOut[3], HEX);
 
-  Serial.print(" rrate=");
+  Serial.print(F(" rr="));
   Serial.print(Globals::refreshRate_us);
-  Serial.print(" us");
-  SendEOF();
-}
-
-void SendErrorFrame(int code, const String &msg) {
-  Serial.write('S');
-  SendXWord(code, 4);
-  Serial.write(' ');
-  Serial.print(msg);
+  Serial.print(F(" us"));
   SendEOF();
 }
 
@@ -149,7 +120,7 @@ void SendKeyText(const String &key, const String &txt) {
 }
 
 void SendKeyValuepair(const String &msg, const String &key, uint32_t value, int ndigits) {
-  
+
   String buffer;
   buffer += msg;
   buffer += key;
@@ -167,12 +138,10 @@ void SendKeyValuepair(const String &msg, const String &key, uint32_t value, int 
 
 // Accessible parameter's types
 enum Types : byte {
-  BYTE = 0,
-  UINT8,
+  UINT8 = 0,
   INT8,
   UINT16,
-  INT16,
-  FLOAT
+  INT16
 };
 
 // Parameter entry: key/type/reference
@@ -185,10 +154,13 @@ typedef struct
 
 // Parameter list
 static const DictionaryParamEntry DictionaryParam[] = {
-  { "serialspeed", BYTE, (void *)&Config::ConfigFile.SerialSpeed },
   { "delay", UINT16, (void *)&Config::ConfigFile.Delay_us },
-  { "klay", BYTE, (void *)&Config::ConfigFile.KeybLayout },
-  { "emode", BYTE, (void *)&Config::ConfigFile.EmulationMode },
+  { "kblay", UINT8, (void *)&Config::ConfigFile.KeybLayout },
+  { "emode", UINT8, (void *)&Config::ConfigFile.EmulationMode },
+  { "axes", UINT8, (void *)&Config::ConfigFile.JoyNumberOfAxes },
+  { "btns", UINT8, (void *)&Config::ConfigFile.JoyNumberOfButtons },
+  { "hats", UINT8, (void *)&Config::ConfigFile.JoyNumberOfHAT },
+  { "shift", UINT8, (void *)&Config::ConfigFile.ShiftInput },
 };
 
 // command handlers
@@ -198,6 +170,8 @@ void SaveCfgHandler(const String &keyval);
 void GetHandler(const String &key);
 void SetHandler(const String &key);
 void HelpHandler(const String &key);
+void SetDInMapHandler(const String &key);
+void SetAInMapHandler(const String &key);
 
 
 
@@ -216,8 +190,9 @@ static const DictionaryKeywordEntry DictionaryKeyword[] = {
   { "get", GetHandler },            // Get parameter
   { "set", SetHandler },            // Set parameter
   { "help", HelpHandler },          // Help
+  { "setdin", SetDInMapHandler },   // Set mapping for digital input
+  { "setain", SetAInMapHandler },   // Set mapping for analog input
 };
-
 
 
 // Handler for "Get parameter" command
@@ -229,7 +204,6 @@ void GetHandler(const String &key) {
   for (i = 0; i < count; i++) {
     if (key.equals(DictionaryParam[i].Key)) {
       switch (DictionaryParam[i].Type) {
-        case BYTE:
         case INT8:
         case UINT8:
           {
@@ -244,15 +218,9 @@ void GetHandler(const String &key) {
             SendKeyValuepair("", key, value, 4);
           }
           break;
-        case FLOAT:
-          {
-            uint32_t value = *((uint32_t *)DictionaryParam[i].pValue);
-            SendKeyValuepair("", key, value, 8);
-          }
-          break;
         default:
           {
-            SendErrorFrame(3, "Unknown type " + String(DictionaryParam[i].Type) + " for param " + key);
+            Serial.println((String)F("S04 Unknown type ") + String(DictionaryParam[i].Type) + F(" for param ") + key);
           }
           break;
       }
@@ -260,7 +228,7 @@ void GetHandler(const String &key) {
     }
   }
   if (i == count) {
-    SendErrorFrame(3, "Key " + key + " not found");
+   Serial.println((String)F("S03 Key ") + key + F(" not found"));
   }
 }
 
@@ -272,63 +240,40 @@ void GetHandler(const String &key) {
 // Set float val=1.0f
 void SetHandler(const String &keyval) {
   String key = Utils::Token(keyval, '=', 0);
-  // Skip space
-  key.trim();
   String value = Utils::Token(keyval, '=', 1);
-  value.trim();
-  //SendDebugKeyText(key, value);
 
   int count = sizeof(DictionaryParam) / sizeof(DictionaryParam[0]);
   int i;
   for (i = 0; i < count; i++) {
     if (key.equals(DictionaryParam[i].Key)) {
       switch (DictionaryParam[i].Type) {
-        case BYTE:
-          {
-            byte val = (byte)Utils::ConvertHexToInt(value, 8);
-            *((byte *)DictionaryParam[i].pValue) = val;
-            //SendKeyValuepair("Set byte ", key, val, 2);
-          }
-          break;
         case UINT8:
           {
             uint8_t val = (uint8_t)Utils::ConvertHexToInt(value, 8);
             *((uint8_t *)DictionaryParam[i].pValue) = val;
-            //SendKeyValuepair("Set uint8 ", key, val, 2);
           }
           break;
         case INT8:
           {
             int8_t val = (int8_t)Utils::ConvertHexToInt(value, 8);
             *((int8_t *)DictionaryParam[i].pValue) = val;
-            //SendKeyValuepair("Set int8 ", key, val, 2);
           }
           break;
         case UINT16:
           {
             uint16_t val = (uint16_t)Utils::ConvertHexToInt(value, 8);
             *((uint16_t *)DictionaryParam[i].pValue) = val;
-            //SendKeyValuepair("Set uint16 ", key, val, 4);
           }
           break;
         case INT16:
           {
             int16_t val = (int16_t)Utils::ConvertHexToInt(value, 8);
             *((int16_t *)DictionaryParam[i].pValue) = val;
-            //SendKeyValuepair("Set int16 ", key, val, 4);
-          }
-          break;
-        case FLOAT:
-          {
-            uint32_t val = (uint32_t)Utils::ConvertHexToInt(value, 8);
-            *((uint32_t *)DictionaryParam[i].pValue) = val;
-            //float *pval = (float *)DictionaryParam[i].pValue;
-            //SendKeyValuepair("Set float as uint32 ", key, val, 8);
           }
           break;
         default:
           {
-            SendErrorFrame(3, (String)F("Unknown type ") + String(DictionaryParam[i].Type) + (String)F(" for param ") + key);
+            Serial.println((String)F("S03 Unknown type ") + String(DictionaryParam[i].Type) + (String)F(" for param ") + key);
           }
           break;
       }
@@ -336,7 +281,7 @@ void SetHandler(const String &keyval) {
     }
   }
   if (i == count) {
-    SendErrorFrame(3, "Key " + key + " not found");
+    Serial.println((String)F("S03 Key ") + key + " not found");
   }
 }
 
@@ -344,7 +289,7 @@ void SetHandler(const String &keyval) {
 void ResetCfgHandler(__attribute__((unused)) const String &keyval) {
   Config::ResetConfig();
   Config::SaveConfigToEEPROM();
-  SendMessageFrame(F("EEPROM reset and write"));
+  SendMessageFrame(F("EEPROM reset"));
 }
 
 // Handler for "Load configuration from eprom" command
@@ -376,11 +321,56 @@ void HelpHandler(__attribute__((unused)) const String &keyval) {
   }
   int countparam = sizeof(DictionaryParam) / sizeof(DictionaryParam[0]);
   for (i = 0; i < countparam; i++) {
-    //SendKeyValuepair(F("Param "), DictionaryParam[i].Key, DictionaryParam[i].Type, 2);
+    SendKeyValuepair(F("Param "), DictionaryParam[i].Key, DictionaryParam[i].Type, 2);
   }
   SendMessageFrame((String)F("Help listed ") + String(countkwd) + F(" keywords and ") + String(countparam) + F(" params"));
 }
 
+// setdin DIN TYPE MAP SHIFTEDMAP NAME
+// DIN: digital input number
+// TYPE: type value
+// MAP: map value
+// SHIFTEDMAP: shifted map value (0 for none)
+// NAME: Name of input (limited to 3 char)
+void SetDInMapHandler(const String &keyval) {
+  String token = Utils::Token(keyval, ' ', 0);
+  uint8_t din = (uint32_t)Utils::ConvertHexToInt(token, 2);
+  token = Utils::Token(keyval, ' ', 1);
+  uint8_t type = (uint32_t)Utils::ConvertHexToInt(token, 2);
+  token = Utils::Token(keyval, ' ', 2);
+  uint8_t mapp = (uint32_t)Utils::ConvertHexToInt(token, 2);
+  token = Utils::Token(keyval, ' ', 3);
+  uint8_t shiftedmap = (uint32_t)Utils::ConvertHexToInt(token, 2);
+  Config::ConfigFile.DigitalInB[din].Type = (Config::MappingType)type;
+  Config::ConfigFile.DigitalInB[din].MapTo = mapp;
+  Config::ConfigFile.DigitalInB[din].MapToShifted = shiftedmap;
+  token = Utils::Token(keyval, ' ', 4);
+  const char* c_name = token.c_str();
+  strncpy(Config::ConfigFile.DigitalInB[din].Name, c_name, 3);
+}
+
+// setain AIN TYPE MAP SHIFTEDMAP NAME
+// AIN: analog input axes number
+// TYPE: type value
+// POS: map value when going positive
+// NEG: map value when going negative
+// NAME: Name of analog input (limited to 3 char)
+void SetAInMapHandler(const String &keyval) {
+  String token = Utils::Token(keyval, ' ', 0);
+  uint8_t ain = (uint32_t)Utils::ConvertHexToInt(token, 2);
+  token = Utils::Token(keyval, ' ', 1);
+  uint8_t type = (uint32_t)Utils::ConvertHexToInt(token, 2);
+  token = Utils::Token(keyval, ' ', 2);
+  uint8_t pos = (uint32_t)Utils::ConvertHexToInt(token, 2);
+  token = Utils::Token(keyval, ' ', 3);
+  uint8_t neg = (uint32_t)Utils::ConvertHexToInt(token, 2);
+  Config::ConfigFile.AnalogInDB[ain].Type = (Config::MappingType)type;
+  Config::ConfigFile.AnalogInDB[ain].MapToPos = pos;
+  Config::ConfigFile.AnalogInDB[ain].MapToNeg = neg;
+  token = Utils::Token(keyval, ' ', 4);
+  const char* c_name = token.c_str();
+  strncpy(Config::ConfigFile.AnalogInDB[ain].Name, c_name, 3);
+}
 
 //-----------------------------------------------------------------------------
 // Interpreter
@@ -411,7 +401,7 @@ void InterpretCommand(char *pline) {
     }
   }
   if (i == count) {
-    SendErrorFrame(3, F("Syntax error"));
+    Serial.println(F("S03: Syntax error"));
   }
 }
 
@@ -464,17 +454,6 @@ int ProcessOneMessage() {
           case '?':
             {
               // Handshaking!
-              // Read protocol version
-              /*
-              char *sc = (char *)(msg + index);
-              int major = Utils::ConvertHexToInt(sc, 4);
-              int minor = Utils::ConvertHexToInt(sc + 4, 4);
-              (String)F("recv major=") + String(major, HEX) + (String)F(" minor=") + String(minor, HEX)
-              SendDebugMessageFrame();
-              if (major >= PROTOCOL_VERSION_MAJOR) {
-                SendDebugMessageFrame(F("handshaking ok"));
-              }
-              */
               // Send protocol version - hardcoded
               Serial.print(F("?"));
               SendXWord(PROTOCOL_VERSION_MAJOR, 4);
@@ -548,8 +527,13 @@ int ProcessOneMessage() {
             }
             break;
 
+          case 'L':
+            //Config::PrintConfig();
+            index = read;
+            break;
+
           default:
-            SendErrorFrame(0, (String)F("UNKNOWN CMD ") + String(msg));
+            Serial.println((String)F("S01 UNKNOWN CMD ") + String(msg));
             index = read;
             break;
         }

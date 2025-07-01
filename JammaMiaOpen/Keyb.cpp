@@ -18,7 +18,9 @@ namespace Keyb {
 static KeyboardNKey_ *pKeyboard = nullptr;
 
 void Setup() {
+#ifdef DEBUG_PRINTF
   Serial.println(F("MKeyboard emulation enabled"));
+#endif
 
   pKeyboard = &Keyboard;
   switch (Config::ConfigFile.KeybLayout) {

@@ -42,15 +42,6 @@
 
 namespace Config {
 
-enum COMSPEED : byte {
-  COM38400 = 0,
-  COM57600 = 1,
-  COM115200 = 2,
-  COM250000 = 3,
-  COM500000 = 4,
-  COM1000000 = 5,
-};
-
 // Fastest RS232 com (Leonard, Mega2560, Due)
 // - 115200 is the standard hihg speed baudrate, but the
 //   Mega2560@16Mhz has some timing issues (2-3% frames errors)
@@ -60,7 +51,7 @@ enum COMSPEED : byte {
 //   whatever speed is choosen.
 // => Take maximum speed 1000000 to reduce transmission delays
 // Note: USB based com (Leonardo, Due) can go up to 2000000 (2Mbps)
-#define PCSERIAL_BAUDRATE (COM500000)
+#define PCSERIAL_BAUDRATE (1000000)
 
 // Config options for keyboard or joystick emulation
 enum EmulationModes : byte {
@@ -125,7 +116,7 @@ typedef struct __attribute__((__packed__)) {
   // Index of keyscan code when using shifted/alternative map (0 being not used)
   byte MapToShifted;
   // Optional name
-  char Name[4];
+  char Name[3];
 } DigitalInputConfig;
 
 // Non-volatile (eeprom) config, bytes field only
@@ -141,15 +132,13 @@ typedef struct __attribute__((__packed__)) {
   // For HAT switch, the 7thMSB gives the player selection P1-P2, 5&6th gives the hat switch number, 3 to 0 gives the direction
   byte MapToNeg;
   // Optional name
-  char Name[4];
+  char Name[3];
 } AnalogInputConfig;
 
 // Non-volatile (eeprom) config, bytes field only
 typedef struct __attribute__((__packed__)) {
   // CRC8, computed on all remaining fields below
   byte CRC8;
-  // bitfield enum baudrate
-  COMSPEED SerialSpeed;
   // Emulation mode
   EmulationModes EmulationMode;
   // Delay for busy wait in us
@@ -181,6 +170,7 @@ extern EEPROM_CONFIG ConfigFile;
 
 int SaveConfigToEEPROM();
 int LoadConfigFromEEPROM();
+void PrintConfig();
 void ResetConfig();
 
 }

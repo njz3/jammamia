@@ -18,6 +18,8 @@
 #include "Mou.h"
 #endif
 
+//#define DEBUG_PRINTF
+
 //#define USE_SPI
 // only used for SPI
 #define CS1_PIN 10
@@ -44,30 +46,27 @@ void setup() {
 
   ConfigureMCUPins();
 
-
-  bool epromResetDone = false;
+  bool epromReset = false;
 
   // Maintain TEST2 + TILT to force reset of configuration
-  if ((!digitalReadFast(MCUDigitalInpin[2])) && (!digitalReadFast(MCUDigitalInpin[3]))) {
-    Config::ResetConfig();
-    Config::SaveConfigToEEPROM();
-    epromResetDone = true;
-  }
-
+  epromReset = (!digitalReadFast(MCUDigitalInpin[2])) && (!digitalReadFast(MCUDigitalInpin[3]));
   // Read configuration, if that fails then reset configuration again
-  if (Config::LoadConfigFromEEPROM() != 1) {
+  epromReset |= (Config::LoadConfigFromEEPROM() != 1);
+
+  if (epromReset) {
     Config::ResetConfig();
     Config::SaveConfigToEEPROM();
-    epromResetDone = true;
   }
 
   Protocol::SetupPort();
 
-  if (epromResetDone) {
+#ifdef DEBUG_PRINTF
+  if (epromReset) {
     Serial.println(F("MConfig internal eprom reset done"));
   } else {
     Serial.println(F("MStarting with config read from internal eprom"));
   }
+#endif
 
 
 #ifdef USE_SPI
@@ -100,8 +99,10 @@ void setup() {
     }
   }
 
+#ifdef DEBUG_PRINTF
   Serial.print(F("MEmulation mode="));
   Serial.println(Config::ConfigFile.EmulationMode);
+#endif
 
   // Setup emulation
   switch (Config::ConfigFile.EmulationMode) {
@@ -280,38 +281,41 @@ void WriteAOut() {
 
 void ProcessDigitalInput(int index, bool newstate) {
   auto dinDB = Config::ConfigFile.DigitalInB[index];
+  byte map = dinDB.MapTo;
+  if (newstate) {
+    // pressed
+    if (isShifted && (dinDB.MapToShifted > 0)) {
+      DInWasShifted[index] = true;
+      map = dinDB.MapToShifted;
+    } else {
+      DInWasShifted[index] = false;
+    }
+  } else {
+    // released
+    if (DInWasShifted[index]) {
+      map = dinDB.MapToShifted;
+    }
+  }
+
+#ifdef DEBUG_PRINTF
   Serial.print(F("din "));
   Serial.print(index, HEX);
   Serial.print(F(" type "));
   Serial.print(dinDB.Type, HEX);
   Serial.print(F(" state "));
   Serial.print(newstate, HEX);
-  if (isShifted && (dinDB.MapToShifted > 0)) {
-    Serial.print(F(" shifted mapto 0x"));
-    Serial.println(dinDB.MapToShifted, HEX);
-  } else {
-    Serial.print(F(" mapto 0x"));
-    Serial.println(dinDB.MapTo, HEX);
-  }
+  Serial.print(F(" mapto 0x"));
+  Serial.println(map, HEX);
+#endif
 
   switch (dinDB.Type) {
 #ifdef USE_KEYB
     case Config::MappingType::Key:
       {
         if (newstate) {
-          if (isShifted && (dinDB.MapToShifted > 0)) {
-            DInWasShifted[index] = true;
-            Keyb::Press(dinDB.MapToShifted);
-          } else {
-            DInWasShifted[index] = false;
-            Keyb::Press(dinDB.MapTo);
-          }
+          Keyb::Press(map);
         } else {
-          if (DInWasShifted[index]) {
-            Keyb::Release(dinDB.MapToShifted);
-          } else {
-            Keyb::Release(dinDB.MapTo);
-          }
+          Keyb::Release(map);
         }
       }
       break;
@@ -320,18 +324,18 @@ void ProcessDigitalInput(int index, bool newstate) {
     case Config::MappingType::JoyButton:
       {
         if (newstate) {
-          Joy::BtnPress(dinDB.MapTo);
+          Joy::BtnPress(map);
         } else {
-          Joy::BtnRelease(dinDB.MapTo);
+          Joy::BtnRelease(map);
         }
       }
       break;
     case Config::MappingType::JoyDirHAT:
       {
         if (newstate) {
-          Joy::SetHATSwitch(dinDB.MapTo, true);
+          Joy::SetHATSwitch(map, true);
         } else {
-          Joy::SetHATSwitch(dinDB.MapTo, false);
+          Joy::SetHATSwitch(map, false);
         }
       }
       break;
@@ -340,18 +344,18 @@ void ProcessDigitalInput(int index, bool newstate) {
     case Config::MappingType::MouseButton:
       {
         if (newstate) {
-          Mou::BtnPress(dinDB.MapTo);
+          Mou::BtnPress(map);
         } else {
-          Mou::BtnRelease(dinDB.MapTo);
+          Mou::BtnRelease(map);
         }
       }
       break;
     case Config::MappingType::MouseAxisIncr:
       {
         if (newstate) {
-          Mou::BtnPress(dinDB.MapTo);
+          Mou::BtnPress(map);
         } else {
-          Mou::BtnRelease(dinDB.MapTo);
+          Mou::BtnRelease(map);
         }
       }
       break;
@@ -458,14 +462,16 @@ void RefreshIOs() {
 
   // Loop on Globals
   for (int i = 0; i < NB_DIGITALINPUTS; i++) {
+    // Detect change
     if (lastDInState[i] ^ Globals::DIn[i]) {
       ProcessDigitalInput(i, Globals::DIn[i]);
       lastDInState[i] = Globals::DIn[i];
     }
-    /*Serial.print(" ");
-    Serial.print(Globals::DIn[i], HEX);*/
+#ifdef DEBUG_PRINTF
+    Serial.print(" ");
+    Serial.print(Globals::DIn[i], HEX);
+#endif
   }
-  //Serial.println("");
   for (int i = 0; i < NB_ANALOGINPUTS; i++) {
     ProcessAnalogInput(i, Globals::AIn[i]);
   }

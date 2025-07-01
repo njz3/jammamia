@@ -20,7 +20,9 @@ static Joystick_* pJoystick[JOYSTICK_COUNT] = { nullptr, nullptr };
 static byte HATDirections[JOYSTICK_COUNT][4];
 
 void Setup() {
+#ifdef DEBUG_PRINTF
   Serial.println(F("MJoystick emulation enabled"));
+#endif
 
   for (int i = 0; i < JOYSTICK_COUNT; i++) {
     pJoystick[i] = new Joystick_(JOYSTICK_DEFAULT_REPORT_ID + i, JOYSTICK_TYPE_JOYSTICK,

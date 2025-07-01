@@ -69,30 +69,104 @@ int LoadConfigFromEEPROM() {
   return 1;
 }
 
+/*
+void PrintConfig() {
+  //Serial.println(F("Buttons config: type 1=keyb, 2=joy axes, 3=joy HAT, 4=joy btn, 5=mouse axes, 6=mouse btn."));
+  //Serial.println(F("List of configured digital inputs (0x8X means player 2):"));
+  for (uint8_t i = 0; i < sizeof(ConfigFile.DigitalInB) / sizeof(ConfigFile.DigitalInB[0]); i++) {
+    Serial.print(F("di "));
+    Serial.print(i);
+    Serial.print(F(" tp="));
+    Serial.print(ConfigFile.DigitalInB[i].Type);
+    Serial.print(F(" mp="));
+    Serial.print(ConfigFile.DigitalInB[i].MapTo, HEX);
+    Serial.print(F(" sh="));
+    Serial.print(ConfigFile.DigitalInB[i].MapToShifted, HEX);
+    Serial.print(F(" nm="));
+    Serial.print(ConfigFile.DigitalInB[i].Name);
+    Serial.println();
+  }
+  
+  for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
+    Serial.print(F("ai "));
+    Serial.print(i);
+    Serial.print(F(" tp="));
+    Serial.print(ConfigFile.AnalogInDB[i].Type);
+    Serial.print(F(" ne="));
+    Serial.print(ConfigFile.AnalogInDB[i].MapToNeg);
+    Serial.print(F(" po="));
+    Serial.print(ConfigFile.AnalogInDB[i].MapToPos);
+    Serial.print(F(" nm="));
+    Serial.print(ConfigFile.DigitalInB[i].Name);
+  }
+}
+*/
 // Reset to default values
 void ResetConfig() {
   memset(&ConfigFile, 0, sizeof(ConfigFile));
-  ConfigFile.SerialSpeed = PCSERIAL_BAUDRATE;
-  
-#ifdef USE_JOY
-  Config::ConfigFile.EmulationMode = Config::EmulationModes::Joystick;
-  #ifdef USE_KEYB
-    Config::ConfigFile.EmulationMode = Config::EmulationModes::JoystickAndKeyboard;
-  #endif
-#else
-  #ifdef USE_KEYB
-    Config::ConfigFile.EmulationMode = Config::EmulationModes::Keyboard;
-  #endif
-#endif
-
   ConfigFile.Delay_us = 0;
-
   // Emulated layout
   //ConfigFile.KeybLayout = 0;  // Layout en-US
   ConfigFile.KeybLayout = 1;  // Layout fr-FR
 
-// Map Player1 on MCP1
-#ifdef USE_KEYB
+#if defined(USE_JOY) && !defined(USE_KEYB)
+  // Joystick only
+  Config::ConfigFile.EmulationMode = Config::EmulationModes::Joystick;
+  ConfigFile.ShiftInput = 0;           // No Shift input
+  ConfigFile.JoyNumberOfButtons = 12;  // 8+2+2(TEST/SERV)
+  ConfigFile.JoyNumberOfAxes = 2;      // 2 axes per joystick
+  ConfigFile.JoyNumberOfHAT = 1;       // 1 HAT per joystick
+  // 8x Buttons
+  for (uint8_t i = 0; i < 8; i++) {
+    // P1
+    ConfigFile.DigitalInB[i].Type = MappingType::JoyButton;
+    ConfigFile.DigitalInB[i].MapTo = (byte)i;
+    // P2
+    ConfigFile.DigitalInB[i + 14].Type = MappingType::JoyButton;
+    ConfigFile.DigitalInB[i + 14].MapTo = (byte)i + (byte)(1 << 7);
+  }
+  // 4x HAT directions
+  for (uint8_t i = 0; i < 4; i++) {
+    // P1
+    ConfigFile.DigitalInB[i + 8].Type = MappingType::JoyDirHAT;
+    ConfigFile.DigitalInB[i + 8].MapTo = (byte)(1 << i);
+    // P2
+    ConfigFile.DigitalInB[i + 8 + 14].Type = MappingType::JoyDirHAT;
+    ConfigFile.DigitalInB[i + 8 + 14].MapTo = (byte)(1 << i) + (byte)(1 << 7);
+  }
+  // 2x Start/coin
+  for (uint8_t i = 0; i < 2; i++) {
+    // P1
+    ConfigFile.DigitalInB[i + 12].Type = MappingType::JoyButton;
+    ConfigFile.DigitalInB[i + 12].MapTo = (byte)(i + 8);
+    // P2
+    ConfigFile.DigitalInB[i + 12 + 14].Type = MappingType::JoyButton;
+    ConfigFile.DigitalInB[i + 12 + 14].MapTo = (byte)(i + 8) + (byte)(1 << 7);
+  }
+  // 4x analog sticks on analog inputs screw terminals
+  for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
+    ConfigFile.AnalogInDB[i].Type = MappingType::JoyAxis;
+    ConfigFile.AnalogInDB[i].MapToPos = i % 2 + ((i < 2) ? 0 : (byte)(1 << 7));  // X/Y/Z
+    ConfigFile.AnalogInDB[i].MapToNeg = 0;                                       // X/Y/Z
+
+    ConfigFile.AnalogDeadzoneMinMax[i][0] = 0x60;
+    ConfigFile.AnalogDeadzoneMinMax[i][1] = 0x80;
+  }
+
+  // Map Service buttons that are on MCU pins
+  ConfigFile.DigitalInB[28].Type = MappingType::JoyButton;  // TEST
+  ConfigFile.DigitalInB[28].MapTo = 10;                     // TEST
+  ConfigFile.DigitalInB[29].Type = MappingType::JoyButton;  // SERVICE
+  ConfigFile.DigitalInB[29].MapTo = 11;                     // SERVICE
+  ConfigFile.DigitalInB[30].Type = MappingType::JoyButton;  // TEST2
+  ConfigFile.DigitalInB[30].MapTo = (byte)(1 << 7) + 10;    // TEST2
+  ConfigFile.DigitalInB[31].Type = MappingType::JoyButton;  // TILT
+  ConfigFile.DigitalInB[31].MapTo = (byte)(1 << 7) + 11;    // TILT
+#endif
+
+#if defined(USE_KEYB) && !defined(USE_JOY)
+  // Keyboard only
+  Config::ConfigFile.EmulationMode = Config::EmulationModes::Keyboard;
   ConfigFile.ShiftInput = 14;  // Shift input is "P1-START"
 
   // Emulated keys for all digital inputs
@@ -147,30 +221,11 @@ void ResetConfig() {
   ConfigFile.DigitalInB[31].MapTo = KEY_F3;  // 'F3' for TILT
 #endif
 
-#ifdef USE_MOUSE
-  // 3x Mouse Buttons
-  for (uint8_t i = 0; i < 3; i++) {
-    // P1
-    ConfigFile.DigitalInB[i].Type = MappingType::MouseButton;
-    ConfigFile.DigitalInB[i].MapTo = (byte)i;
-    // P2
-    ConfigFile.DigitalInB[i + 14].Type = MappingType::MouseButton;
-    ConfigFile.DigitalInB[i + 14].MapTo = (byte)i + (byte)(1 << 7);
-  }
-  // Mouse axis increment
-  for (uint8_t i = 0; i < 4; i++) {
-    // P1 Up/Down/Left/right
-    ConfigFile.DigitalInB[i + 8].Type = MappingType::MouseAxisIncr;
-    ConfigFile.DigitalInB[i + 8].MapTo = (byte)(1 << i);
-    // P2
-    ConfigFile.DigitalInB[i + 8 + 14].Type = MappingType::MouseAxisIncr;
-    ConfigFile.DigitalInB[i + 8 + 14].MapTo = (byte)(1 << i) + (byte)(1 << 7);
-  }
 
-#endif
-
-
-#ifdef USE_JOY
+#if defined(USE_JOY) && defined(USE_KEYB)
+  // Keyboard and Joystick
+  Config::ConfigFile.EmulationMode = Config::EmulationModes::JoystickAndKeyboard;
+  ConfigFile.ShiftInput = 0;           // No Shift input
   ConfigFile.JoyNumberOfButtons = 10;  // 8+2
   ConfigFile.JoyNumberOfAxes = 2;      // 2 axes per joystick
   ConfigFile.JoyNumberOfHAT = 1;       // 1 HAT per joystick
@@ -211,20 +266,42 @@ void ResetConfig() {
     ConfigFile.AnalogDeadzoneMinMax[i][1] = 0x80;
   }
 
+  // Map Service buttons that are on MCU pins
+  for (uint8_t i = 0; i < 4; i++) {
+    ConfigFile.DigitalInB[28 + i].Type = MappingType::Key;  // TEST
+  }
+  ConfigFile.DigitalInB[28].MapTo = KEY_F2;  // 'F2' for TEST
+  ConfigFile.DigitalInB[29].MapTo = KEY_F1;  // 'F1' for SERVICE
+  ConfigFile.DigitalInB[30].MapTo = KEY_F4;  // 'F4' for TEST2
+  ConfigFile.DigitalInB[31].MapTo = KEY_F3;  // 'F3' for TILT
 #endif
 
-#ifdef DEBUG_PRINTF
-  Serial.println(F("Buttons config: type 1=keyb, 2=joy axes, 3=joy HAT, 4=joy btn, 5=mouse axes, 6=mouse btn."));
-  Serial.println(F("List of configured digital inputs (0x8X means player 2):"));
-  for (uint8_t i = 0; i < sizeof(ConfigFile.DigitalInB) / sizeof(ConfigFile.DigitalInB[0]); i++) {
-    Serial.print(F("din "));
-    Serial.print(i);
-    Serial.print(F(" type="));
-    Serial.print(ConfigFile.DigitalInB[i].Type);
-    Serial.print(F(" mapto=0x"));
-    Serial.print(ConfigFile.DigitalInB[i].MapTo, HEX);
-    Serial.println();
+
+#if defined(USE_MOUSE) && !defined(USE_JOY) && !defined(USE_KEYB)
+  // 3x Mouse Buttons
+  for (uint8_t i = 0; i < 3; i++) {
+    // P1
+    ConfigFile.DigitalInB[i].Type = MappingType::MouseButton;
+    ConfigFile.DigitalInB[i].MapTo = (byte)i;
+    // P2
+    ConfigFile.DigitalInB[i + 14].Type = MappingType::MouseButton;
+    ConfigFile.DigitalInB[i + 14].MapTo = (byte)i + (byte)(1 << 7);
   }
+  // Mouse axis increment
+  for (uint8_t i = 0; i < 4; i++) {
+    // P1 Up/Down/Left/right
+    ConfigFile.DigitalInB[i + 8].Type = MappingType::MouseAxisIncr;
+    ConfigFile.DigitalInB[i + 8].MapTo = (byte)(1 << i);
+    // P2
+    ConfigFile.DigitalInB[i + 8 + 14].Type = MappingType::MouseAxisIncr;
+    ConfigFile.DigitalInB[i + 8 + 14].MapTo = (byte)(1 << i) + (byte)(1 << 7);
+  }
+
+#endif
+
+
+#ifdef DEBUG_PRINTF
+  PrintConfig();
 #endif
 }
 
