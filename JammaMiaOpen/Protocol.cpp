@@ -220,7 +220,7 @@ void GetHandler(const String &key) {
           break;
         default:
           {
-            Serial.println((String)F("S04 Unknown type ") + String(DictionaryParam[i].Type) + F(" for param ") + key);
+            Serial.println((String)F("S04 Unknown type for ") + key);
           }
           break;
       }
@@ -228,7 +228,7 @@ void GetHandler(const String &key) {
     }
   }
   if (i == count) {
-    Serial.println((String)F("S03 Key ") + key + F(" not found"));
+    Serial.println((String)F("S03 Key not found ") + key);
   }
 }
 
@@ -273,7 +273,7 @@ void SetHandler(const String &keyval) {
           break;
         default:
           {
-            Serial.println((String)F("S03 Unknown type ") + String(DictionaryParam[i].Type) + (String)F(" for param ") + key);
+            Serial.println((String)F("S04 Unknown type for ") + key);
           }
           break;
       }
@@ -281,7 +281,7 @@ void SetHandler(const String &keyval) {
     }
   }
   if (i == count) {
-    Serial.println((String)F("S03 Key ") + key + " not found");
+    Serial.println((String)F("S03 Key not found") + key);
   }
 }
 

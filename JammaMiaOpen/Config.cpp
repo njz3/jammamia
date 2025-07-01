@@ -17,7 +17,13 @@
 
 #endif
 
-//#define DEBUG_PRINTF
+// Due to memory constraint, only enable debug if 1x emulation is selected
+#if defined(USE_JOY) && !defined(USE_KEYB)
+#define DEBUG_PRINTF
+#endif
+#if !defined(USE_JOY) && defined(USE_KEYB)
+#define DEBUG_PRINTF
+#endif
 
 namespace Config {
 

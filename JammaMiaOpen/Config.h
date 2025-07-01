@@ -6,7 +6,7 @@
 #include <Arduino.h>
 
 #define USE_KEYB
-//#define USE_JOY
+#define USE_JOY
 //#define USE_MOUSE
 
 //-----------------------------------------------------------------------------
