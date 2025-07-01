@@ -38,27 +38,12 @@ Adafruit_MCP23X17 mcp2;  //declaration for chip 2
 
 uint16_t tickCounter = 0;
 
+void ConfigureMCUPins();
 
 void setup() {
 
-  // Configure I2C pins on MCU
-  pinMode(Interruptpin, INPUT_PULLUP);
-  pinMode(SDApin, INPUT_PULLUP);
-  pinMode(SCLpin, INPUT_PULLUP);
+  ConfigureMCUPins();
 
-  // ADC Prescaler of 16
-  ADCSRA &= ~((1 << ADPS0) + (1 << ADPS1));
-  ADCSRA |= 1 << ADPS2;
-
-  for (int i = 0; i < (int)(sizeof(MCUDigitalInpin) / sizeof(MCUDigitalInpin[0])); i++) {
-    pinMode(MCUDigitalInpin[i], INPUT_PULLUP);
-  }
-  for (int i = 0; i < (int)(sizeof(MCUAnalogInpin) / sizeof(MCUAnalogInpin[0])); i++) {
-    pinMode(MCUAnalogInpin[i], INPUT);
-  }
-  for (int i = 0; i < (int)(sizeof(MCUAnalogOutpin) / sizeof(MCUAnalogOutpin[0])); i++) {
-    pinMode(MCUAnalogOutpin[i], INPUT_PULLUP);
-  }
 
   bool epromResetDone = false;
 
@@ -68,6 +53,7 @@ void setup() {
     Config::SaveConfigToEEPROM();
     epromResetDone = true;
   }
+
   // Read configuration, if that fails then reset configuration again
   if (Config::LoadConfigFromEEPROM() != 1) {
     Config::ResetConfig();
@@ -136,14 +122,14 @@ void setup() {
 #endif
 #if defined(USE_KEYB) && defined(USE_JOY)
     case Config::EmulationModes::JoystickAndKeyboard:
-      Joy::Setup();
       Keyb::Setup();
+      Joy::Setup();
       break;
 #endif
 #if defined(USE_KEYB) && defined(USE_MOUSE)
     case Config::EmulationModes::MouseAndKeyboard:
-      Mou::Setup();
       Keyb::Setup();
+      Mou::Setup();
       break;
 #endif
 
@@ -202,13 +188,38 @@ void RefreshMCPOutputs(bool doutstates[4]) {
 
 uint16_t lastmcuio = 0;
 volatile bool lastDInState[NB_DIGITALINPUTS] = {};
+volatile bool DInWasShifted[NB_DIGITALINPUTS] = {};
 bool isShifted = false;
+
+void ConfigureMCUPins() {
+  // Configure I2C pins on MCU
+  pinMode(Interruptpin, INPUT_PULLUP);
+  pinMode(SDApin, INPUT_PULLUP);
+  pinMode(SCLpin, INPUT_PULLUP);
+
+  // ADC Prescaler of 16
+  ADCSRA &= ~((1 << ADPS0) + (1 << ADPS1));
+  ADCSRA |= 1 << ADPS2;
+
+  for (int i = 0; i < (int)(sizeof(MCUDigitalInpin) / sizeof(MCUDigitalInpin[0])); i++) {
+    pinMode(MCUDigitalInpin[i], INPUT_PULLUP);
+  }
+  for (int i = 0; i < (int)(sizeof(MCUAnalogInpin) / sizeof(MCUAnalogInpin[0])); i++) {
+    pinMode(MCUAnalogInpin[i], INPUT);
+  }
+  for (int i = 0; i < (int)(sizeof(MCUAnalogOutpin) / sizeof(MCUAnalogOutpin[0])); i++) {
+    pinMode(MCUAnalogOutpin[i], INPUT_PULLUP);
+  }
+}
 
 void RefreshMCUInputs() {
   // Digital
   uint16_t mcuio = 0;
-  for (int i = 0; i < 4; i++) {
-    mcuio |= (digitalReadFast(MCUDigitalInpin[i]) == 0) << i;
+  for (int i = 0; i < (int)(sizeof(MCUDigitalInpin) / sizeof(MCUDigitalInpin[0])); i++) {
+    bool isPressed = !digitalReadFast(MCUDigitalInpin[i]);
+    if (isPressed) {
+      mcuio |= (uint16_t)1 << (uint16_t)i;
+    }
   }
   Globals::MCUIOs = mcuio;
 }
@@ -245,13 +256,6 @@ void ReadDIn() {
       isShifted = true;
     } else {
       isShifted = false;
-      // Clear "shifted state" of all buttons, just in case
-      for (int i = 0; i < NB_DIGITALINPUTS; i++) {
-        auto dinDB = Config::ConfigFile.DigitalInB[i];
-        if ((dinDB.MapToShifted > 0) && (lastDInState[i])) {
-          Keyb::Release(dinDB.MapToShifted);
-        }
-      }
     }
   }
 }
@@ -276,75 +280,82 @@ void WriteAOut() {
 
 void ProcessDigitalInput(int index, bool newstate) {
   auto dinDB = Config::ConfigFile.DigitalInB[index];
-  Serial.print("din ");
+  Serial.print(F("din "));
   Serial.print(index, HEX);
-  Serial.print(" type ");
+  Serial.print(F(" type "));
   Serial.print(dinDB.Type, HEX);
-  Serial.print(" state ");
+  Serial.print(F(" state "));
   Serial.print(newstate, HEX);
-  Serial.print(" mapto ");
-  Serial.println(dinDB.MapTo, HEX);
+  if (isShifted && (dinDB.MapToShifted > 0)) {
+    Serial.print(F(" shifted mapto 0x"));
+    Serial.println(dinDB.MapToShifted, HEX);
+  } else {
+    Serial.print(F(" mapto 0x"));
+    Serial.println(dinDB.MapTo, HEX);
+  }
 
   switch (dinDB.Type) {
+#ifdef USE_KEYB
     case Config::MappingType::Key:
       {
-#ifdef USE_KEYB
-        byte kmap = dinDB.MapTo;
-        if (isShifted && (dinDB.MapToShifted > 0)) {
-          kmap = dinDB.MapToShifted;
-        }
         if (newstate) {
-          Keyb::Press(kmap);
+          if (isShifted && (dinDB.MapToShifted > 0)) {
+            DInWasShifted[index] = true;
+            Keyb::Press(dinDB.MapToShifted);
+          } else {
+            DInWasShifted[index] = false;
+            Keyb::Press(dinDB.MapTo);
+          }
         } else {
-          Keyb::Release(kmap);
+          if (DInWasShifted[index]) {
+            Keyb::Release(dinDB.MapToShifted);
+          } else {
+            Keyb::Release(dinDB.MapTo);
+          }
         }
-#endif
       }
       break;
+#endif
+#ifdef USE_JOY
     case Config::MappingType::JoyButton:
       {
-#ifdef USE_JOY
         if (newstate) {
           Joy::BtnPress(dinDB.MapTo);
         } else {
           Joy::BtnRelease(dinDB.MapTo);
         }
-#endif
       }
       break;
     case Config::MappingType::JoyDirHAT:
       {
-#ifdef USE_JOY
         if (newstate) {
           Joy::SetHATSwitch(dinDB.MapTo, true);
         } else {
           Joy::SetHATSwitch(dinDB.MapTo, false);
         }
-#endif
       }
       break;
+#endif
+#ifdef USE_MOUSE
     case Config::MappingType::MouseButton:
       {
-#ifdef USE_MOUSE
         if (newstate) {
           Mou::BtnPress(dinDB.MapTo);
         } else {
           Mou::BtnRelease(dinDB.MapTo);
         }
-#endif
       }
       break;
     case Config::MappingType::MouseAxisIncr:
       {
-#ifdef USE_MOUSE
         if (newstate) {
           Mou::BtnPress(dinDB.MapTo);
         } else {
           Mou::BtnRelease(dinDB.MapTo);
         }
-#endif
       }
       break;
+#endif
 
     default:
       break;
@@ -358,21 +369,21 @@ void ProcessDigitalInput(int index, bool newstate) {
 void ProcessAnalogInput(int index, int value) {
   auto ainDB = Config::ConfigFile.AnalogInDB[index];
   switch (ainDB.Type) {
+#ifdef USE_KEYB
     case Config::MappingType::Key:
       {
         // Do thing when input is configured for keyboard
       }
       break;
+#endif
+#ifdef USE_JOY
     case Config::MappingType::JoyAxis:
       {
-#ifdef USE_JOY
         Joy::SetAxis(ainDB.MapToPos, value);
-#endif
       }
       break;
     case Config::MappingType::JoyButton:
       {
-#ifdef USE_JOY
         int16_t min = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][0]) << 2;
         int16_t max = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][1]) << 2;
         if (value < min) {
@@ -385,12 +396,10 @@ void ProcessAnalogInput(int index, int value) {
           Joy::BtnRelease(ainDB.MapToNeg);
           Joy::BtnRelease(ainDB.MapToPos);
         }
-#endif
       }
       break;
     case Config::MappingType::JoyDirHAT:
       {
-#ifdef USE_JOY
         int16_t min = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][0]) << 2;
         int16_t max = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][1]) << 2;
         if (value < min) {
@@ -403,19 +412,17 @@ void ProcessAnalogInput(int index, int value) {
           Joy::SetHATSwitch(ainDB.MapToNeg, false);
           Joy::SetHATSwitch(ainDB.MapToPos, false);
         }
-#endif
       }
       break;
+#endif
+#ifdef USE_MOUSE
     case Config::MappingType::MouseAxis:
       {
-#ifdef USE_MOUSE
         Mou::SetAxis(ainDB.MapToPos, value);
-#endif
       }
       break;
     case Config::MappingType::MouseButton:
       {
-#ifdef USE_MOUSE
         int16_t min = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][0]) << 2;
         int16_t max = ((int16_t)Config::ConfigFile.AnalogDeadzoneMinMax[index][1]) << 2;
         if (value < min) {
@@ -428,9 +435,9 @@ void ProcessAnalogInput(int index, int value) {
           Mou::BtnRelease(ainDB.MapToNeg);
           Mou::BtnRelease(ainDB.MapToPos);
         }
-#endif
       }
       break;
+#endif
 
     default:
       break;

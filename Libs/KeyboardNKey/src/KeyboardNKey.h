@@ -149,6 +149,7 @@ public:
   void releaseAll(void);
   void sendState();
 };
+extern KeyboardNKey_ Keyboard;
 
 #endif
 #endif

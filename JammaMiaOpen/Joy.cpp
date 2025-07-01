@@ -15,7 +15,7 @@
 
 namespace Joy {
 
-static Joystick_* Joystick[JOYSTICK_COUNT] = { };
+static Joystick_* pJoystick[JOYSTICK_COUNT] = { nullptr, nullptr };
 
 static byte HATDirections[JOYSTICK_COUNT][4];
 
@@ -23,38 +23,39 @@ void Setup() {
   Serial.println(F("MJoystick emulation enabled"));
 
   for (int i = 0; i < JOYSTICK_COUNT; i++) {
-    Joystick[i] = new Joystick_(0x04 + i, JOYSTICK_TYPE_JOYSTICK,
-                                Config::ConfigFile.JoyNumberOfButtons,
-                                Config::ConfigFile.JoyNumberOfHAT,
-                                Config::ConfigFile.JoyNumberOfAxes > 0,  // X
-                                Config::ConfigFile.JoyNumberOfAxes > 1,  // Y
-                                Config::ConfigFile.JoyNumberOfAxes > 2,  // Z
-                                Config::ConfigFile.JoyNumberOfAxes > 3,  // Rx
-                                Config::ConfigFile.JoyNumberOfAxes > 4,  // Ry
-                                Config::ConfigFile.JoyNumberOfAxes > 5,  // Rz
-                                Config::ConfigFile.JoyNumberOfAxes > 6,  // Rudder
-                                Config::ConfigFile.JoyNumberOfAxes > 7,  // Throttle
-                                false,                                   // Accel
-                                false,                                   // Brake
-                                false);                                  // Steering
-    Joystick[i]->setXAxisRange(0, 1023);
-    Joystick[i]->setYAxisRange(0, 1023);
-    Joystick[i]->setZAxisRange(0, 1023);
-    Joystick[i]->setRxAxisRange(0, 1023);
-    Joystick[i]->setRyAxisRange(0, 1023);
-    Joystick[i]->setRzAxisRange(0, 1023);
-    Joystick[i]->setRudderRange(0, 1023);
-    Joystick[i]->setThrottleRange(0, 1023);
-    Joystick[i]->begin(false);
+    pJoystick[i] = new Joystick_(JOYSTICK_DEFAULT_REPORT_ID + i, JOYSTICK_TYPE_JOYSTICK,
+                                 Config::ConfigFile.JoyNumberOfButtons,
+                                 Config::ConfigFile.JoyNumberOfHAT,
+                                 Config::ConfigFile.JoyNumberOfAxes > 0,  // X
+                                 Config::ConfigFile.JoyNumberOfAxes > 1,  // Y
+                                 Config::ConfigFile.JoyNumberOfAxes > 2,  // Z
+                                 Config::ConfigFile.JoyNumberOfAxes > 3,  // Rx
+                                 Config::ConfigFile.JoyNumberOfAxes > 4,  // Ry
+                                 Config::ConfigFile.JoyNumberOfAxes > 5,  // Rz
+                                 Config::ConfigFile.JoyNumberOfAxes > 6,  // Rudder
+                                 Config::ConfigFile.JoyNumberOfAxes > 7,  // Throttle
+                                 false,                                   // Accel
+                                 false,                                   // Brake
+                                 false);                                  // Steering
+
+    pJoystick[i]->setXAxisRange(0, 1023);
+    pJoystick[i]->setYAxisRange(0, 1023);
+    pJoystick[i]->setZAxisRange(0, 1023);
+    pJoystick[i]->setRxAxisRange(0, 1023);
+    pJoystick[i]->setRyAxisRange(0, 1023);
+    pJoystick[i]->setRzAxisRange(0, 1023);
+    pJoystick[i]->setRudderRange(0, 1023);
+    pJoystick[i]->setThrottleRange(0, 1023);
+    pJoystick[i]->begin(false);
   }
 }
 
 void BtnPress(byte button) {
   int p = button >> 7;
   int btn = button & 0b01111111;
-  if (Joystick[p] == nullptr)
+  if (pJoystick[p] == nullptr)
     return;
-  Joystick[p]->pressButton(btn);
+  pJoystick[p]->pressButton(btn);
 #ifdef DEBUG_PRINTF
   Serial.print(F("joy P"));
   Serial.print(p, HEX);
@@ -66,9 +67,9 @@ void BtnPress(byte button) {
 void BtnRelease(byte button) {
   int p = button >> 7;
   int btn = button & 0b01111111;
-  if (Joystick[p] == nullptr)
+  if (pJoystick[p] == nullptr)
     return;
-  Joystick[p]->releaseButton(btn);
+  pJoystick[p]->releaseButton(btn);
 #ifdef DEBUG_PRINTF
   Serial.print(F("joy P"));
   Serial.print(p, HEX);
@@ -102,7 +103,7 @@ const int16_t DirectionToHATTable[] = {
 
 void SetHATSwitch(byte hatdirection, bool enable) {
   int p = hatdirection >> 7;
-  if (Joystick[p] == nullptr)
+  if (pJoystick[p] == nullptr)
     return;
   byte hatsw = hatdirection >> 5 & 0b11;
   byte direction = hatdirection & 0b00001111;
@@ -115,7 +116,7 @@ void SetHATSwitch(byte hatdirection, bool enable) {
   }
   direction = HATDirections[p][hatsw] & 0b1111;
   int angle = DirectionToHATTable[direction];
-  Joystick[p]->setHatSwitch(hatsw, angle);
+  pJoystick[p]->setHatSwitch(hatsw, angle);
 
 #ifdef DEBUG_PRINTF
   Serial.print(F("joy P"));
@@ -130,32 +131,32 @@ void SetHATSwitch(byte hatdirection, bool enable) {
 void SetAxis(byte axis, int32_t value) {
   int p = axis >> 7;
   byte axisidx = axis & 0b00000111;  // 0..7
-  if (Joystick[p] == nullptr)
+  if (pJoystick[p] == nullptr)
     return;
   switch (axisidx) {
     case 0:
-      Joystick[p]->setXAxis(value);
+      pJoystick[p]->setXAxis(value);
       break;
     case 1:
-      Joystick[p]->setYAxis(value);
+      pJoystick[p]->setYAxis(value);
       break;
     case 2:
-      Joystick[p]->setZAxis(value);
+      pJoystick[p]->setZAxis(value);
       break;
     case 3:
-      Joystick[p]->setRxAxis(value);
+      pJoystick[p]->setRxAxis(value);
       break;
     case 4:
-      Joystick[p]->setRyAxis(value);
+      pJoystick[p]->setRyAxis(value);
       break;
     case 5:
-      Joystick[p]->setRzAxis(value);
+      pJoystick[p]->setRzAxis(value);
       break;
     case 6:
-      Joystick[p]->setRudder(value);
+      pJoystick[p]->setRudder(value);
       break;
     case 7:
-      Joystick[p]->setThrottle(value);
+      pJoystick[p]->setThrottle(value);
       break;
   }
 
@@ -171,9 +172,9 @@ void SetAxis(byte axis, int32_t value) {
 
 void UpdateToPC() {
   for (int i = 0; i < JOYSTICK_COUNT; i++) {
-    if (Joystick[i] == nullptr)
+    if (pJoystick[i] == nullptr)
       continue;
-    Joystick[i]->sendState();
+    pJoystick[i]->sendState();
   }
 }
 

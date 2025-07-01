@@ -13,7 +13,7 @@ uint16_t refreshRate_us = 0;
 // Bit order GPA 0..6, GPB 0..6
 uint16_t MCPIOs[2];
 // Bit order: 8, 16, 14, 15
-uint16_t MCUIOs; 
+uint16_t MCUIOs;
 
 
 // All digital inputs
