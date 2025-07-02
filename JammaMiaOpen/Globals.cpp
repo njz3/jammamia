@@ -17,12 +17,12 @@ uint16_t MCUIOs;
 
 
 // All digital inputs
-bool DIn[NB_DIGITALINPUTS];
+bool DIn[NB_DIGITALINPUTS] = {};
 // All analog inputs
-int16_t AIn[NB_ANALOGINPUTS];
+int16_t AIn[NB_ANALOGINPUTS] = {};
 // All digital outputs
-bool DOut[NB_DIGITALOUTPUTS];
+bool DOut[NB_DIGITALOUTPUTS] = {};
 // All analog outputs
-int16_t AOut[NB_ANALOGOUTPUTS];
+int16_t AOut[NB_ANALOGOUTPUTS] = {};
 
 }

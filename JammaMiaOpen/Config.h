@@ -113,7 +113,7 @@ typedef struct __attribute__((__packed__)) {
   // For axis and buttons, the 7th MSB (0b10000000) gives the player selection P1-P2, bits 6 to 0 are axis or button index
   // For HAT switch, the 7thMSB gives the player selection P1-P2, 5&6th gives the hat switch number, 3 to 0 gives the direction
   byte MapTo;
-  // Index of keyscan code when using shifted/alternative map (0 being not used)
+  // Index of keyscan code when using shifted/alternative map (0 being not used/none)
   byte MapToShifted;
   // Optional name
   char Name[3];
@@ -174,6 +174,8 @@ extern EEPROM_CONFIG ConfigFile;
 
 int SaveConfigToEEPROM();
 int LoadConfigFromEEPROM();
+void PrintDInConfig(int);
+void PrintAInConfig(int);
 void PrintConfig();
 void ResetConfig();
 

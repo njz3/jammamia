@@ -76,41 +76,52 @@ int LoadConfigFromEEPROM() {
 }
 
 
+void PrintDInConfig(int i) {
+#ifdef DEBUG_PRINTF
+  Serial.print(F("Mdi "));
+  Serial.print(i);
+  Serial.print(F(" tp="));
+  Serial.print(ConfigFile.DigitalInB[i].Type, HEX);
+  Serial.print(F(" mp="));
+  Serial.print(ConfigFile.DigitalInB[i].MapTo, HEX);
+  Serial.print(F(" sh="));
+  Serial.print(ConfigFile.DigitalInB[i].MapToShifted, HEX);
+  Serial.print(F(" nm="));
+  Serial.print(ConfigFile.DigitalInB[i].Name);
+  Serial.println();
+#endif
+}
+void PrintAInConfig(int i) {
+#ifdef DEBUG_PRINTF
+  Serial.print(F("Mai "));
+  Serial.print(i);
+  Serial.print(F(" tp="));
+  Serial.print(ConfigFile.AnalogInDB[i].Type, HEX);
+  Serial.print(F(" po="));
+  Serial.print(ConfigFile.AnalogInDB[i].MapToPos, HEX);
+  Serial.print(F(" ne="));
+  Serial.print(ConfigFile.AnalogInDB[i].MapToNeg, HEX);
+  Serial.print(F(" dmi="));
+  Serial.print(ConfigFile.AnalogInDB[i].DeadzoneMin, HEX);
+  Serial.print(F(" dma="));
+  Serial.print(ConfigFile.AnalogInDB[i].DeadzoneMax, HEX);
+  Serial.print(F(" nm="));
+  Serial.print(ConfigFile.DigitalInB[i].Name);
+  Serial.println();
+#endif
+}
+
 void PrintConfig() {
 #ifdef DEBUG_PRINTF
   Serial.println(F("Buttons config: type 1=keyb, 2=joy axes, 3=joy HAT, 4=joy btn, 5=mouse axes, 6=mouse btn."));
   Serial.println(F("List of configured digital inputs (0x8X means player 2):"));
+#endif
   for (uint8_t i = 0; i < sizeof(ConfigFile.DigitalInB) / sizeof(ConfigFile.DigitalInB[0]); i++) {
-    Serial.print(F("di "));
-    Serial.print(i);
-    Serial.print(F(" tp="));
-    Serial.print(ConfigFile.DigitalInB[i].Type, HEX);
-    Serial.print(F(" mp="));
-    Serial.print(ConfigFile.DigitalInB[i].MapTo, HEX);
-    Serial.print(F(" sh="));
-    Serial.print(ConfigFile.DigitalInB[i].MapToShifted, HEX);
-    Serial.print(F(" nm="));
-    Serial.print(ConfigFile.DigitalInB[i].Name);
-    Serial.println();
+    PrintDInConfig(i);
   }
   for (uint8_t i = 0; i < sizeof(ConfigFile.AnalogInDB) / sizeof(ConfigFile.AnalogInDB[0]); i++) {
-    Serial.print(F("ai "));
-    Serial.print(i);
-    Serial.print(F(" tp="));
-    Serial.print(ConfigFile.AnalogInDB[i].Type, HEX);
-    Serial.print(F(" po="));
-    Serial.print(ConfigFile.AnalogInDB[i].MapToPos, HEX);
-    Serial.print(F(" ne="));
-    Serial.print(ConfigFile.AnalogInDB[i].MapToNeg, HEX);
-    Serial.print(F(" dmi="));
-    Serial.print(ConfigFile.AnalogInDB[i].DeadzoneMin, HEX);
-    Serial.print(F(" dma="));
-    Serial.print(ConfigFile.AnalogInDB[i].DeadzoneMax, HEX);
-    Serial.print(F(" nm="));
-    Serial.print(ConfigFile.DigitalInB[i].Name);
-    Serial.println();
+    PrintAInConfig(i);
   }
-#endif
 }
 
 // Reset to default values
@@ -155,7 +166,7 @@ void ResetConfig() {
     ConfigFile.DigitalInB[i + 12 + 14].Type = MappingType::JoyButton;
     ConfigFile.DigitalInB[i + 12 + 14].MapTo = (byte)(i + 8) + (byte)(1 << 7);
   }
-  
+
   // Map Service buttons that are on MCU pins
   ConfigFile.DigitalInB[28].Type = MappingType::JoyButton;  // TEST
   ConfigFile.DigitalInB[28].MapTo = 10;                     // TEST
@@ -189,6 +200,7 @@ void ResetConfig() {
   }
 
   // Emulated keys, using MAME default layout
+  // Map Player1 on MCP1
   ConfigFile.DigitalInB[0].MapTo = KEY_LEFT_CTRL;       // P1-But1
   ConfigFile.DigitalInB[0].MapToShifted = '5';          // P1-But1 shifted
   ConfigFile.DigitalInB[1].MapTo = KEY_LEFT_ALT;        // P1-But2
@@ -230,7 +242,7 @@ void ResetConfig() {
   // Map Service buttons that are on MCU pins
   ConfigFile.DigitalInB[28].MapTo = KEY_F2;  // 'F2' for TEST
   ConfigFile.DigitalInB[29].MapTo = KEY_F1;  // 'F1' for SERVICE
-  ConfigFile.DigitalInB[30].MapTo = KEY_F4;  // 'F4' for TEST2
+  ConfigFile.DigitalInB[30].MapTo = 't';     // 'F4' for TEST2
   ConfigFile.DigitalInB[31].MapTo = KEY_F3;  // 'F3' for TILT
 
   // 4x analog sticks on analog inputs screw terminals mapped to KEYPAD

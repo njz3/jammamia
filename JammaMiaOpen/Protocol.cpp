@@ -48,7 +48,7 @@ void SendXWord(uint32_t val, int ndigits) {
 void SendDebugMessageFrame(const String &debug) {
   if (!Globals::VolatileConfig.DebugMode)
     return;
-  Serial.print("M");
+  Serial.write('M');
   Serial.print(debug);
   SendEOF();
 }
@@ -74,7 +74,7 @@ void SendDebugKeyValue(const String &msg, const String &key, uint32_t value, int
 
 
 void SendStatusFrame() {
-  Serial.write('M');
+  Serial.write('S');
   Serial.print(F("mcp1="));
   Serial.print(Globals::MCPIOs[0], HEX);
   Serial.print(F(" mcp2="));
@@ -220,7 +220,7 @@ void GetHandler(const String &key) {
           break;
         default:
           {
-            Serial.println((String)F("S04 Unknown type for ") + key);
+            Serial.println((String)F("E04 Unknown type for ") + key);
           }
           break;
       }
@@ -228,7 +228,7 @@ void GetHandler(const String &key) {
     }
   }
   if (i == count) {
-    Serial.println((String)F("S03 Key not found ") + key);
+    Serial.println((String)F("E03 Key not found ") + key);
   }
 }
 
@@ -273,7 +273,7 @@ void SetHandler(const String &keyval) {
           break;
         default:
           {
-            Serial.println((String)F("S04 Unknown type for ") + key);
+            Serial.println((String)F("E04 Unknown type for ") + key);
           }
           break;
       }
@@ -281,7 +281,7 @@ void SetHandler(const String &keyval) {
     }
   }
   if (i == count) {
-    Serial.println((String)F("S03 Key not found") + key);
+    Serial.println((String)F("E03 Key not found") + key);
   }
 }
 
@@ -317,13 +317,13 @@ void HelpHandler(__attribute__((unused)) const String &keyval) {
   int i;
   int countkwd = sizeof(DictionaryKeyword) / sizeof(DictionaryKeyword[0]);
   for (i = 0; i < countkwd; i++) {
-    SendKeyText(F("Keyword "), DictionaryKeyword[i].Keyword);
+    Serial.println((String)F("MKeyword ") + DictionaryKeyword[i].Keyword);
   }
   int countparam = sizeof(DictionaryParam) / sizeof(DictionaryParam[0]);
   for (i = 0; i < countparam; i++) {
     SendKeyValuepair(F("Param "), DictionaryParam[i].Key, DictionaryParam[i].Type, 2);
   }
-  SendMessageFrame((String)F("Help listed ") + String(countkwd) + F(" keywords and ") + String(countparam) + F(" params"));
+  SendMessageFrame((String)F("MHelp listed ") + String(countkwd) + F(" keywords and ") + String(countparam) + F(" params"));
 }
 
 // setdin DIN TYPE MAP SHIFTEDMAP NAME
@@ -347,6 +347,7 @@ void SetDInMapHandler(const String &keyval) {
   token = Utils::Token(keyval, ' ', 4);
   const char *c_name = token.c_str();
   strncpy(Config::ConfigFile.DigitalInB[din].Name, c_name, 3);
+  Config::PrintDInConfig(din);
 }
 
 // setain AIN TYPE POS NEG DMIN DMAX NAME
@@ -378,6 +379,7 @@ void SetAInMapHandler(const String &keyval) {
   token = Utils::Token(keyval, ' ', 6);
   const char *c_name = token.c_str();
   strncpy(Config::ConfigFile.AnalogInDB[ain].Name, c_name, 3);
+  Config::PrintAInConfig(ain);
 }
 
 //-----------------------------------------------------------------------------
@@ -409,7 +411,7 @@ void InterpretCommand(char *pline) {
     }
   }
   if (i == count) {
-    Serial.println(F("S03: Syntax error"));
+    Serial.println(F("E03 Syntax error"));
   }
 }
 
@@ -555,7 +557,7 @@ int ProcessOneMessage() {
             break;
 
           default:
-            Serial.println((String)F("S01 UNKNOWN CMD ") + String(msg));
+            Serial.println((String)F("E01 UNKNOWN CMD ") + String(msg));
             index = read;
             break;
         }

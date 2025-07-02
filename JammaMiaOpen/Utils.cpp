@@ -127,7 +127,6 @@ String Token(const String& str, const char separator, int tokenIdx) {
       }
       goto _error;
     } else {
-      //Serial.println(index);
       // Separator found
       if (index == 0) {
         // Skip empty entries
