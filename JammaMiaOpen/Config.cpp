@@ -113,8 +113,8 @@ void PrintAInConfig(int i) {
 
 void PrintConfig() {
 #ifdef DEBUG_PRINTF
-  Serial.println(F("Buttons config: type 1=keyb, 2=joy axes, 3=joy HAT, 4=joy btn, 5=mouse axes, 6=mouse btn."));
-  Serial.println(F("List of configured digital inputs (0x8X means player 2):"));
+  Serial.println(F("MButtons config: type 1=keyb, 2=joy axes, 3=joy HAT, 4=joy btn, 5=mouse axes, 6=mouse btn."));
+  Serial.println(F("MList of configured digital inputs (0x8X means player 2):"));
 #endif
   for (uint8_t i = 0; i < sizeof(ConfigFile.DigitalInB) / sizeof(ConfigFile.DigitalInB[0]); i++) {
     PrintDInConfig(i);
