@@ -37,10 +37,12 @@
 #define MOUSE_LEFT 1
 #define MOUSE_RIGHT 2
 #define MOUSE_MIDDLE 4
-#define MOUSE_ALL (MOUSE_LEFT | MOUSE_RIGHT | MOUSE_MIDDLE)
+#define MOUSE_PREV 8
+#define MOUSE_NEXT 16
+#define MOUSE_ALL (MOUSE_LEFT | MOUSE_RIGHT | MOUSE_MIDDLE | MOUSE_PREV | MOUSE_NEXT)
 
 // Low level mouse report: buttons follow by X/Y change
-typedef struct
+typedef struct __attribute__((__packed__))
 {
   uint8_t buttons;
   signed char x;

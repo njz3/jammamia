@@ -124,7 +124,7 @@ extern const uint8_t KeyboardLayout_hu_HU[];
 #define NB_KEYBOARD_KEYS (24)
 
 // Low level key report: up to 6 keys and shift, ctrl etc at once
-typedef struct
+typedef struct __attribute__((__packed__))
 {
   uint8_t modifiers;
   uint8_t reserved;
