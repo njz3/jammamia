@@ -5,6 +5,7 @@
 // Arduino Framework
 #include <Arduino.h>
 
+// Due to code memory constraint, only enable 1x or 2x devices below
 #define USE_KEYB
 #define USE_JOY
 //#define USE_MOUSE
@@ -19,10 +20,10 @@
 #define PLATFORM_STRING "JAMMAMIAOPEN BOARD ON LEONARDO"
 #define VERSION_STRING (VERSION_NUMBER " " PLATFORM_STRING)
 
-// Protocole version reply has 32bit unsigned hex in ascii format:
-// "?XXXXYYYY" where XXXX=major version, YYYY minor version
-#define PROTOCOL_VERSION_MAJOR (0x0001)
-#define PROTOCOL_VERSION_MINOR (0x0000)
+// Protocole version reply has 16bit unsigned hex in ascii format:
+// "?XXYY" where XX=major version, YY minor version
+#define PROTOCOL_VERSION_MAJOR "01"
+#define PROTOCOL_VERSION_MINOR "00"
 
 // If SPRINTF is to be used instead of raw conversion
 //#define USE_SPRINTF_FOR_STATUS_FRAME
@@ -62,9 +63,9 @@ enum EmulationModes : byte {
   Joystick = 2,
   // Emulation of 2 joysticks : X/Y axes, 8 buttons + start/coin as keyboard keys
   JoystickAndKeyboard = 3,
-  // Emulation of a mouse : X/Y axes, 3 buttons per player
+  // Emulation of 2 mices : X/Y axes, 3 buttons per player
   Mouse = 4,
-  // Emulation of a mouse + keyboard : X/Y axes, 3 buttons + other buttons as keyboard keys
+  // Emulation of 2 mices + keyboard : X/Y axes, 3 buttons + other buttons as keyboard keys
   MouseAndKeyboard = 5,
 };
 
@@ -91,21 +92,33 @@ enum MappingType : byte {
   Nothing = 0,
   // Emulation of a keyboard : a,z,w,q,e
   Key = 1,
-  // X/Y/Z axes
+  // X/Y/Z analog axes
   JoyAxis = 2,
   // 8 directions HAT (see HATDirections)
   JoyDirHAT = 3,
   // Joystick buttons
   JoyButton = 4,
-  // mouse X/Y
+  // mouse axes X/Y/Wheel from analog or digital
   MouseAxis = 5,
-  // mouse button
+  // mouse button left/right/middle/prev/next
   MouseButton = 6,
-  // mouse axis increment
-  MouseAxisIncr = 7,
 };
 
-// Non-volatile (eeprom) config, bytes field only
+// Config options for keyboard or joystick emulation
+enum DInOptions : byte {
+  None = 0,
+  // Input is disabled
+  Disabled = (1<<0),
+  // Input is inverted
+  InvertedLogic = (1<<1),
+  // Repeated press
+  AutoFire = (1<<2),
+};
+
+// Fixed length of an IO name
+#define LENGTH_IO_NAME (3)
+
+// Non-volatile (eeprom) digital input config, bytes field only
 typedef struct __attribute__((__packed__)) {
   // Type of mapping
   MappingType Type;
@@ -116,10 +129,10 @@ typedef struct __attribute__((__packed__)) {
   // Index of keyscan code when using shifted/alternative map (0 being not used/none)
   byte MapToShifted;
   // Optional name
-  char Name[3];
+  char Name[LENGTH_IO_NAME];
 } DigitalInputConfig;
 
-// Non-volatile (eeprom) config, bytes field only
+// Non-volatile (eeprom) analog input config, bytes field only
 typedef struct __attribute__((__packed__)) {
   // Type of mapping
   MappingType Type;
@@ -138,10 +151,10 @@ typedef struct __attribute__((__packed__)) {
   // Maximum value is usually 0x80 (center being 80)
   uint8_t DeadzoneMax;
   // Optional name
-  char Name[3];
+  char Name[LENGTH_IO_NAME];
 } AnalogInputConfig;
 
-// Non-volatile (eeprom) config, bytes field only
+// Non-volatile (eeprom) whole config, bytes field only
 typedef struct __attribute__((__packed__)) {
   // CRC8, computed on all remaining fields below
   byte CRC8;

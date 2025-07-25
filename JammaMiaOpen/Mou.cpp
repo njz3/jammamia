@@ -5,40 +5,37 @@
 #include "Globals.h"
 #include "Utils.h"
 
-#ifdef ARDUINO_AVR_LEONARDO
 #include <MouseN.h>
-#else
-#error No support
-#endif
 
-#define DEBUG_PRINTF
+//#define DEBUG_PRINTF
 
 namespace Mou {
 
-static MouseN_ *Mouse = nullptr;
+static bool ButtonStateHasChanged = false;
+static bool MoveStateHasChanged = false;
 
-const uint8_t MouseButtons[] = { MOUSE_LEFT, MOUSE_RIGHT, MOUSE_MIDDLE };
+static MouseN_ *pMouse = nullptr;
+
+const uint8_t MouseButtons[] = { MOUSE_LEFT, MOUSE_RIGHT, MOUSE_MIDDLE, MOUSE_PREV, MOUSE_NEXT, 0, 0, 0 };
 
 void Setup() {
-#ifdef DEBUG_PRINTF
-  Serial.println(F("MMouse emulation enabled"));
-#endif
-  Mouse = new MouseN_(true);
-  Mouse->begin();
+  pMouse = new MouseN_(true);
+  pMouse->begin();
 }
 
 void BtnPress(byte button) {
   int p = button >> 7;
-  int btn = button & 0b111;
-  if (Mouse == nullptr)
+  int btn = button & 0b111;  // up to 5 buttons
+  if (pMouse == nullptr)
     return;
   // if the mouse is not pressed, press it:
-  if (!Mouse->isPressed(MouseButtons[btn], p == 1)) {
-    Mouse->press(MouseButtons[btn], p == 1);
+  if (!pMouse->isPressed(MouseButtons[btn], p == 1)) {
+    pMouse->press(MouseButtons[btn], p == 1);
   }
+  ButtonStateHasChanged = true;
 #ifdef DEBUG_PRINTF
-  Serial.print(F("mouse P"));
-  Serial.print(p, HEX);
+  Serial.print(F("Mmouse P"));
+  Serial.print(p + 1);
   Serial.print(F(" press btn "));
   Serial.println(btn, HEX);
 #endif
@@ -47,53 +44,61 @@ void BtnPress(byte button) {
 void BtnRelease(byte button) {
   int p = button >> 7;
   int btn = button & 0b111;
-  if (Mouse == nullptr)
+  if (pMouse == nullptr)
     return;
   // if the mouse is pressed, release it:
-  if (Mouse->isPressed(MouseButtons[btn], p == 1)) {
-    Mouse->release(MouseButtons[btn], p == 1);
+  if (pMouse->isPressed(MouseButtons[btn], p == 1)) {
+    pMouse->release(MouseButtons[btn], p == 1);
   }
+  ButtonStateHasChanged = true;
 #ifdef DEBUG_PRINTF
-  Serial.print(F("joy P"));
-  Serial.print(p, HEX);
+  Serial.print(F("Mmouse P"));
+  Serial.print(p + 1);
   Serial.print(F(" release btn "));
   Serial.println(btn, HEX);
 #endif
 }
 
-void SetAxis(byte axis, int32_t value) {
+void MoveAxis(byte axis, int8_t value) {
   int p = axis >> 7;
-  int dir = axis & 0b111;
+  int8_t signvalue = ((axis & 0b1000) ? -value : value);
+  int dir = axis & 0b111;  // W/Y/X bitmask
 
-  int xDistance = (dir == 0b001 ? value : 0);
-  int yDistance = (dir == 0b010 ? value : 0);
-  int wDistance = (dir == 0b100 ? value : 0);
+  int8_t xDistance = (dir == 0b0001 ? signvalue : 0);
+  int8_t yDistance = (dir == 0b0010 ? signvalue : 0);
+  int8_t wDistance = (dir == 0b0100 ? signvalue : 0);
 
-  if (Mouse == nullptr)
+  if (pMouse == nullptr)
     return;
-  Mouse->move(xDistance, yDistance, wDistance, p == 1);
+  pMouse->move(xDistance, yDistance, wDistance, p == 1);
+  MoveStateHasChanged = true;
+#ifdef DEBUG_PRINTF
+  Serial.print(F("Mmouse P"));
+  Serial.print(p + 1);
+  Serial.print(F(" move x "));
+  Serial.print(xDistance);
+  Serial.print(F(" y "));
+  Serial.print(yDistance);
+  Serial.print(F(" w "));
+  Serial.println(wDistance);
+#endif
 }
-
-
-void IncrAxis(byte axis, int32_t value) {
-  int p = axis >> 7;
-  int dir = axis & 0b111;
-
-  int xDistance = (dir == 0b001 ? value : 0);
-  int yDistance = (dir == 0b010 ? value : 0);
-  int wDistance = (dir == 0b100 ? value : 0);
-
-  if (Mouse == nullptr)
-    return;
-  Mouse->move(xDistance, yDistance, wDistance, p == 1);
-}
-
 
 void UpdateToPC() {
-  if (Mouse == nullptr)
+  if (pMouse == nullptr)
     return;
-  Mouse->sendReport(false);
-  Mouse->sendReport(true);
+  if (ButtonStateHasChanged || MoveStateHasChanged) {
+    pMouse->sendReport(false);
+    pMouse->sendReport(true);
+    ButtonStateHasChanged = false;
+    if (MoveStateHasChanged) {
+      // Clear move data
+      pMouse->move(0, 0, 0, false);
+      pMouse->move(0, 0, 0, true);
+      MoveStateHasChanged = false;
+    }
+  }
+
 #ifdef DEBUG_PRINTF
   //Serial.println(F("mouse update"));
 #endif

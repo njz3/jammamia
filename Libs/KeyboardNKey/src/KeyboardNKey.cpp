@@ -70,6 +70,7 @@ KeyboardNKey_::KeyboardNKey_(void)
 
 void KeyboardNKey_::begin(const uint8_t *layout, bool autoSend)
 {
+	memset(&_keyReport, 0, sizeof(_keyReport));
 	_autoSend = autoSend;
 	_asciimap = layout;
 }
@@ -221,5 +222,5 @@ void KeyboardNKey_::sendState()
 	sendReport(&_keyReport);
 }
 
-KeyboardNKey_ Keyboard;
+//KeyboardNKey_ Keyboard;
 #endif

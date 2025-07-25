@@ -15,17 +15,14 @@
 
 namespace Joy {
 
+static bool StateHasChanged = false;
 static Joystick_* pJoystick[JOYSTICK_COUNT] = { nullptr, nullptr };
 
 static byte HATDirections[JOYSTICK_COUNT][4];
 
 void Setup() {
-#ifdef DEBUG_PRINTF
-  Serial.println(F("MJoystick emulation enabled"));
-#endif
-
   for (int i = 0; i < JOYSTICK_COUNT; i++) {
-    pJoystick[i] = new Joystick_(JOYSTICK_DEFAULT_REPORT_ID + i, JOYSTICK_TYPE_JOYSTICK,
+    pJoystick[i] = new Joystick_(4 + i, JOYSTICK_TYPE_GAMEPAD,
                                  Config::ConfigFile.JoyNumberOfButtons,
                                  Config::ConfigFile.JoyNumberOfHAT,
                                  Config::ConfigFile.JoyNumberOfAxes > 0,  // X
@@ -58,8 +55,10 @@ void BtnPress(byte button) {
   if (pJoystick[p] == nullptr)
     return;
   pJoystick[p]->pressButton(btn);
+  StateHasChanged = true;
+
 #ifdef DEBUG_PRINTF
-  Serial.print(F("joy P"));
+  Serial.print(F("Mjoy P"));
   Serial.print(p, HEX);
   Serial.print(F(" press btn "));
   Serial.println(btn, HEX);
@@ -72,9 +71,10 @@ void BtnRelease(byte button) {
   if (pJoystick[p] == nullptr)
     return;
   pJoystick[p]->releaseButton(btn);
+  StateHasChanged = true;
 #ifdef DEBUG_PRINTF
-  Serial.print(F("joy P"));
-  Serial.print(p, HEX);
+  Serial.print(F("Mjoy P"));
+  Serial.print(p + 1, HEX);
   Serial.print(F(" release btn "));
   Serial.println(btn, HEX);
 #endif
@@ -119,10 +119,11 @@ void SetHATSwitch(byte hatdirection, bool enable) {
   direction = HATDirections[p][hatsw] & 0b1111;
   int angle = DirectionToHATTable[direction];
   pJoystick[p]->setHatSwitch(hatsw, angle);
+  StateHasChanged = true;
 
 #ifdef DEBUG_PRINTF
-  Serial.print(F("joy P"));
-  Serial.print(p, HEX);
+  Serial.print(F("Mjoy P"));
+  Serial.print(p + 1, HEX);
   Serial.print(F(" HAT dir "));
   Serial.print(direction, HEX);
   Serial.print(F(" Angle "));
@@ -130,41 +131,44 @@ void SetHATSwitch(byte hatdirection, bool enable) {
 #endif
 }
 
-void SetAxis(byte axis, int32_t value) {
+void SetAxis(byte axis, int16_t value) {
   int p = axis >> 7;
+  int16_t signvalue = ((axis & 0b1000) ? JOY_MAXPOS_VAL-value : value);
   byte axisidx = axis & 0b00000111;  // 0..7
+  
   if (pJoystick[p] == nullptr)
     return;
   switch (axisidx) {
     case 0:
-      pJoystick[p]->setXAxis(value);
+      pJoystick[p]->setXAxis(signvalue);
       break;
     case 1:
-      pJoystick[p]->setYAxis(value);
+      pJoystick[p]->setYAxis(signvalue);
       break;
     case 2:
-      pJoystick[p]->setZAxis(value);
+      pJoystick[p]->setZAxis(signvalue);
       break;
     case 3:
-      pJoystick[p]->setRxAxis(value);
+      pJoystick[p]->setRxAxis(signvalue);
       break;
     case 4:
-      pJoystick[p]->setRyAxis(value);
+      pJoystick[p]->setRyAxis(signvalue);
       break;
     case 5:
-      pJoystick[p]->setRzAxis(value);
+      pJoystick[p]->setRzAxis(signvalue);
       break;
     case 6:
-      pJoystick[p]->setRudder(value);
+      pJoystick[p]->setRudder(signvalue);
       break;
     case 7:
-      pJoystick[p]->setThrottle(value);
+      pJoystick[p]->setThrottle(signvalue);
       break;
   }
+  StateHasChanged = true;
 
 #ifdef DEBUG_PRINTF_ANALOG
-  Serial.print(F("joy P"));
-  Serial.print(p, HEX);
+  Serial.print(F("Mjoy P"));
+  Serial.print(p + 1, HEX);
   Serial.print(F(" axis "));
   Serial.print(axisidx, HEX);
   Serial.print(F(" value "));
@@ -173,10 +177,13 @@ void SetAxis(byte axis, int32_t value) {
 }
 
 void UpdateToPC() {
-  for (int i = 0; i < JOYSTICK_COUNT; i++) {
-    if (pJoystick[i] == nullptr)
-      continue;
-    pJoystick[i]->sendState();
+  if (StateHasChanged) {
+    StateHasChanged = false;
+    for (int i = 0; i < JOYSTICK_COUNT; i++) {
+      if (pJoystick[i] == nullptr)
+        continue;
+      pJoystick[i]->sendState();
+    }
   }
 }
 

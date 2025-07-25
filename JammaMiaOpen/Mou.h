@@ -7,8 +7,7 @@ namespace Mou {
 void Setup();
 void BtnPress(byte button);
 void BtnRelease(byte button);
-void SetAxis(byte axis, int32_t value);
-void IncrAxis(byte axis, int32_t value);
+void MoveAxis(byte axis, int8_t value);
 void UpdateToPC();
 }
 

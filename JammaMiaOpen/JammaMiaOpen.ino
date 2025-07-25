@@ -20,11 +20,6 @@
 
 //#define DEBUG_PRINTF
 
-//#define USE_SPI
-// only used for SPI
-#define CS1_PIN 10
-#define CS2_PIN 16
-
 // pin assignements for I2C on MCU
 const int Interruptpin = 7;
 const int SDApin = 2;
@@ -38,22 +33,26 @@ const int MCUAnalogOutpin[NB_ANALOGOUTPUTS] = { 5, 6, 9, 10 };
 Adafruit_MCP23X17 mcp1;  //declaration for chip 1
 Adafruit_MCP23X17 mcp2;  //declaration for chip 2
 
-uint16_t tickCounter = 0;
+uint32_t tickCounter = 0;
 
 void ConfigureMCUPins();
 
 void setup() {
 
+  //--- MCU pins ---
+
   ConfigureMCUPins();
 
-  bool epromReset = false;
+  bool epromResetDone = false;
+
+  //--- CONFIG ---
 
   // Maintain TEST2 + TILT to force reset of configuration
-  epromReset = (!digitalReadFast(MCUDigitalInpin[2])) && (!digitalReadFast(MCUDigitalInpin[3]));
+  epromResetDone = (!digitalReadFast(MCUDigitalInpin[2])) && (!digitalReadFast(MCUDigitalInpin[3]));
   // Read configuration, if that fails then reset configuration again
-  epromReset |= (Config::LoadConfigFromEEPROM() != 1);
+  epromResetDone |= (Config::LoadConfigFromEEPROM() != 1);
 
-  if (epromReset) {
+  if (epromResetDone) {
     Config::ResetConfig();
     Config::SaveConfigToEEPROM();
   }
@@ -64,34 +63,20 @@ void setup() {
     Globals::VolatileConfig.DoEmulation = false;
   }
 
+  //--- Start USB stack ---
   Protocol::SetupPort();
 
-#ifdef DEBUG_PRINTF
-  if (epromReset) {
-    Serial.println(F("MConfig internal eprom reset done"));
-  } else {
-    Serial.println(F("MStarting with config read from internal eprom"));
-  }
-#endif
-
-
-#ifdef USE_SPI
-  mcp1.enableAddrPins();
-  if (!mcp1.begin_SPI(CS1_PIN, &SPI, 0b000) || !mcp2.begin_SPI(CS2_PIN, &SPI, 0b001)) {
-#else
   // I2C
   if (!mcp1.begin_I2C(0x20, &Wire) || !mcp2.begin_I2C(0x21, &Wire)) {
-#endif
-    Serial.println(F("Error mcp1 or mcp2."));
+    Serial.println(F("I2C Error"));
   }
-#ifndef USE_SPI
+
   // Set to maximum I2C speed for Atmega32u4
   Wire.setClock(800000L);
   /*mcp1.setupInterrupts(true, false, LOW);
   mcp1.setupInterruptPin(0, LOW);
   mcp2.setupInterrupts(true, false, LOW);
   mcp2.setupInterruptPin(0, LOW);*/
-#endif
 
   for (int8_t i = 0; i <= 15; i++) {
     if (i == 7 || i == 15) {
@@ -104,11 +89,6 @@ void setup() {
       mcp2.pinMode(i, INPUT_PULLUP);
     }
   }
-
-#ifdef DEBUG_PRINTF
-  Serial.print(F("MEmulation mode="));
-  Serial.println(Config::ConfigFile.EmulationMode);
-#endif
 
   // Setup emulation
   switch (Config::ConfigFile.EmulationMode) {
@@ -147,6 +127,17 @@ void setup() {
   }
 
   SetupInterrupt();
+
+  //--- Final boot message ---
+#ifdef DEBUG_PRINTF
+  if (epromResetDone) {
+    Serial.println(F("MEPROM reset done"));
+  } else {
+    Serial.println(F("MStarting with config read from internal eprom"));
+  }
+  Serial.print(F("MEmulation mode="));
+  Serial.println(Config::ConfigFile.EmulationMode);
+#endif
 }
 
 
@@ -192,6 +183,7 @@ void RefreshMCPOutputs(bool doutstates[4]) {
     mcp2.writeGPIOAB(gpio2);
   }
 }
+
 
 uint16_t lastmcuio = 0;
 volatile bool lastDInState[NB_DIGITALINPUTS] = {};
@@ -287,31 +279,31 @@ void WriteAOut() {
 
 void ProcessDigitalInput(int index, bool newstate) {
   auto dinDB = Config::ConfigFile.DigitalInB[index];
-  byte map = dinDB.MapTo;
+  byte mapping = dinDB.MapTo;
   if (newstate) {
     // pressed
     if (isShifted && (dinDB.MapToShifted > 0)) {
       DInWasShifted[index] = true;
-      map = dinDB.MapToShifted;
+      mapping = dinDB.MapToShifted;
     } else {
       DInWasShifted[index] = false;
     }
   } else {
     // released
     if (DInWasShifted[index]) {
-      map = dinDB.MapToShifted;
+      mapping = dinDB.MapToShifted;
     }
   }
 
 #ifdef DEBUG_PRINTF
-  Serial.print(F("din "));
-  Serial.print(index, HEX);
-  Serial.print(F(" type "));
+  Serial.print(F("Mdin "));
+  Serial.print(index);
+  Serial.print(F(" type 0x"));
   Serial.print(dinDB.Type, HEX);
   Serial.print(F(" state "));
-  Serial.print(newstate, HEX);
+  Serial.print(newstate);
   Serial.print(F(" mapto 0x"));
-  Serial.println(map, HEX);
+  Serial.println(mapping, HEX);
 #endif
 
   switch (dinDB.Type) {
@@ -319,9 +311,9 @@ void ProcessDigitalInput(int index, bool newstate) {
     case Config::MappingType::Key:
       {
         if (newstate) {
-          Keyb::Press(map);
+          Keyb::Press(mapping);
         } else {
-          Keyb::Release(map);
+          Keyb::Release(mapping);
         }
       }
       break;
@@ -330,18 +322,18 @@ void ProcessDigitalInput(int index, bool newstate) {
     case Config::MappingType::JoyButton:
       {
         if (newstate) {
-          Joy::BtnPress(map);
+          Joy::BtnPress(mapping);
         } else {
-          Joy::BtnRelease(map);
+          Joy::BtnRelease(mapping);
         }
       }
       break;
     case Config::MappingType::JoyDirHAT:
       {
         if (newstate) {
-          Joy::SetHATSwitch(map, true);
+          Joy::SetHATSwitch(mapping, true);
         } else {
-          Joy::SetHATSwitch(map, false);
+          Joy::SetHATSwitch(mapping, false);
         }
       }
       break;
@@ -350,18 +342,16 @@ void ProcessDigitalInput(int index, bool newstate) {
     case Config::MappingType::MouseButton:
       {
         if (newstate) {
-          Mou::BtnPress(map);
+          Mou::BtnPress(mapping);
         } else {
-          Mou::BtnRelease(map);
+          Mou::BtnRelease(mapping);
         }
       }
       break;
-    case Config::MappingType::MouseAxisIncr:
+    case Config::MappingType::MouseAxis:
       {
         if (newstate) {
-          Mou::BtnPress(map);
-        } else {
-          Mou::BtnRelease(map);
+          Mou::MoveAxis(mapping, 2);
         }
       }
       break;
@@ -377,6 +367,10 @@ void ProcessDigitalInput(int index, bool newstate) {
 // value is between 0 and 1023 (0x3FF). middle point being 511 (0x1FF)
 // Threasholds for center and middle deadzone : 0x100 and 0x300
 void ProcessAnalogInput(int index, int value) {
+  if ((tickCounter % 10) != 0) {
+    // Only update every 10 cycles
+    return;
+  }
   auto ainDB = Config::ConfigFile.AnalogInDB[index];
   int16_t min = ((int16_t)ainDB.DeadzoneMin) << 2;
   int16_t max = ((int16_t)ainDB.DeadzoneMax) << 2;
@@ -438,7 +432,17 @@ void ProcessAnalogInput(int index, int value) {
 #ifdef USE_MOUSE
     case Config::MappingType::MouseAxis:
       {
-        Mou::SetAxis(ainDB.MapToPos, value);
+        if (value < min) {
+          // Map to -127/127
+          auto amplitude = min - value;
+          int16_t incr = map(amplitude, 0, 1023, -127, 0);
+          Mou::MoveAxis(ainDB.MapToNeg, incr);
+        } else if (value > max) {
+          // Map to -127/127
+          auto amplitude = value - max;
+          int16_t incr = map(amplitude, 0, 1023, 0, 127);
+          Mou::MoveAxis(ainDB.MapToPos, incr);
+        }
       }
       break;
     case Config::MappingType::MouseButton:
@@ -474,18 +478,15 @@ void RefreshIOs() {
   uint32_t end = micros();
   Globals::ioReadTime_us = end - start;
 
-  // Loop on Globals
+  // Digital inputs
   for (int i = 0; i < NB_DIGITALINPUTS; i++) {
-    // Detect change
+    // State has changed?
     if (lastDInState[i] ^ Globals::DIn[i]) {
       ProcessDigitalInput(i, Globals::DIn[i]);
       lastDInState[i] = Globals::DIn[i];
     }
-#ifdef DEBUG_PRINTF
-    Serial.print(" ");
-    Serial.print(Globals::DIn[i], HEX);
-#endif
   }
+  // Analog inputs
   for (int i = 0; i < NB_ANALOGINPUTS; i++) {
     ProcessAnalogInput(i, Globals::AIn[i]);
   }

@@ -106,6 +106,7 @@ MouseN_::MouseN_(bool isDual)
 
 void MouseN_::begin(void) 
 {
+	memset(_mouseReports, 0, sizeof(_mouseReports));
 }
 
 void MouseN_::end(void) 

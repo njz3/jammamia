@@ -1,7 +1,7 @@
-#include "Config.h"
 /*
   Management of configuration for IO board
 */
+#include "Config.h"
 #include "Protocol.h"
 #include "Globals.h"
 #include "Utils.h"
@@ -33,10 +33,6 @@ void SetupPort() {
 
 // Footer = (end of frame)
 // - End of line '\n' (1 byte)
-void SendEOF() {
-  // Add '\n' for end-of-frame
-  Serial.write('\n');
-}
 
 // Send a uint32 value with "n" hexa digits
 void SendXWord(uint32_t val, int ndigits) {
@@ -45,33 +41,10 @@ void SendXWord(uint32_t val, int ndigits) {
   Serial.write(buff.c_str(), ndigits);
 }
 
-void SendDebugMessageFrame(const String &debug) {
-  if (!Globals::VolatileConfig.DebugMode)
-    return;
-  Serial.write('M');
-  Serial.print(debug);
-  SendEOF();
-}
-
-void SendDebugKeyText(const String &key, const String &txt) {
-  String buffer;
-  buffer += key;
-  buffer += "=";
-  buffer += txt;
-  SendDebugMessageFrame(buffer);
-}
-
-void SendDebugKeyValue(const String &msg, const String &key, uint32_t value, int ndigits) {
-  String buffer;
-  buffer += msg;
-  buffer += key;
-  buffer += "=";
-  String zvalue;
-  Utils::ConvertToNDigHex(value, zvalue, ndigits);
-  buffer += zvalue;
-  SendDebugMessageFrame(buffer);
-}
-
+const char PROGMEM sSPC[] = " ";
+const char PROGMEM sE01[] = "E01 Unknown keyw ";
+const char PROGMEM sE02[] = "E02 Key not found ";
+const char PROGMEM sE03[] = "E03 Unknown type for ";
 
 void SendStatusFrame() {
   Serial.write('S');
@@ -81,34 +54,30 @@ void SendStatusFrame() {
   Serial.print(Globals::MCPIOs[1], HEX);
   Serial.print(F(" mcu="));
   Serial.print(Globals::MCUIOs, HEX);
-  Serial.print(F(" an0="));
-  Serial.print(Globals::AIn[0], HEX);
-  Serial.print(F(" an1="));
-  Serial.print(Globals::AIn[1], HEX);
-  Serial.print(F(" an2="));
-  Serial.print(Globals::AIn[2], HEX);
-  Serial.print(F(" an3="));
-  Serial.print(Globals::AIn[3], HEX);
+  Serial.print(F(" an="));
+  for (int i = 0; i < NB_ANALOGINPUTS; i++) {
+    Serial.print(Globals::AIn[i], HEX);
+    Serial.print((__FlashStringHelper *)sSPC);
+  }
+  Serial.print(F("do="));
+  for (int i = 0; i < NB_DIGITALOUTPUTS; i++) {
+    Serial.print(Globals::DOut[i], HEX);
+    Serial.print((__FlashStringHelper *)sSPC);
+  }
+  Serial.print(F("ao="));
+  for (int i = 0; i < NB_ANALOGOUTPUTS; i++) {
+    Serial.print(Globals::AOut[i], HEX);
+    Serial.print((__FlashStringHelper *)sSPC);
+  }
 
-  Serial.print(F(" ao0="));
-  Serial.print(Globals::AOut[0], HEX);
-  Serial.print(F(" ao1="));
-  Serial.print(Globals::AOut[1], HEX);
-  Serial.print(F(" ao2="));
-  Serial.print(Globals::AOut[2], HEX);
-  Serial.print(F(" ao3="));
-  Serial.print(Globals::AOut[3], HEX);
-
-  Serial.print(F(" rr="));
+  Serial.print(F("rr="));
   Serial.print(Globals::refreshRate_us);
-  Serial.print(F(" us"));
-  SendEOF();
+  Serial.println(F(" us"));
 }
 
 void SendMessageFrame(const String &msg) {
   Serial.write('M');
-  Serial.print(msg);
-  SendEOF();
+  Serial.println(msg);
 }
 
 void SendKeyText(const String &key, const String &txt) {
@@ -124,7 +93,7 @@ void SendKeyValuepair(const String &msg, const String &key, uint32_t value, int 
   String buffer;
   buffer += msg;
   buffer += key;
-  buffer += "=";
+  buffer += "=0x";
   String zvalue;
   Utils::ConvertToNDigHex(value, zvalue, ndigits);
   buffer += zvalue;
@@ -141,7 +110,8 @@ enum Types : byte {
   UINT8 = 0,
   INT8,
   UINT16,
-  INT16
+  INT16,
+  FLOAT
 };
 
 // Parameter entry: key/type/reference
@@ -194,7 +164,6 @@ static const DictionaryKeywordEntry DictionaryKeyword[] = {
   { "setain", SetAInMapHandler },   // Set mapping for analog input
 };
 
-
 // Handler for "Get parameter" command
 void GetHandler(const String &key) {
   //SendDebugKeyText("get key", key);
@@ -218,9 +187,16 @@ void GetHandler(const String &key) {
             SendKeyValuepair("", key, value, 4);
           }
           break;
+        case FLOAT:
+          {
+            uint32_t value = *((uint32_t *)DictionaryParam[i].pValue);
+            SendKeyValuepair("", key, value, 8);
+          }
+          break;
         default:
           {
-            Serial.println((String)F("E04 Unknown type for ") + key);
+            Serial.print((__FlashStringHelper *)sE03);
+            Serial.println(key);
           }
           break;
       }
@@ -228,7 +204,8 @@ void GetHandler(const String &key) {
     }
   }
   if (i == count) {
-    Serial.println((String)F("E03 Key not found ") + key);
+    Serial.print((__FlashStringHelper *)sE02);
+    Serial.println(key);
   }
 }
 
@@ -273,7 +250,8 @@ void SetHandler(const String &keyval) {
           break;
         default:
           {
-            Serial.println((String)F("E04 Unknown type for ") + key);
+            Serial.print((__FlashStringHelper *)sE03);
+            Serial.println(key);
           }
           break;
       }
@@ -281,22 +259,22 @@ void SetHandler(const String &keyval) {
     }
   }
   if (i == count) {
-    Serial.println((String)F("E03 Key not found") + key);
+    Serial.print((__FlashStringHelper *)sE02);
+    Serial.println(key);
   }
 }
 
 // Handler for "Reset configuration" command
 void ResetCfgHandler(__attribute__((unused)) const String &keyval) {
   Config::ResetConfig();
-  Config::SaveConfigToEEPROM();
-  SendMessageFrame(F("EEPROM reset"));
+  Serial.println(F("Mcfg rst"));
 }
 
 // Handler for "Load configuration from eprom" command
 void LoadCfgHandler(__attribute__((unused)) const String &keyval) {
   int stt = Config::LoadConfigFromEEPROM();
   if (stt == 1)
-    SendMessageFrame(F("EEPROM load"));
+    Serial.println(F("Mcfg ld"));
   else {
     //SendKeyValuepair(F("Error load EEPROM failed with "), "stt", stt, 4);
   }
@@ -306,7 +284,7 @@ void LoadCfgHandler(__attribute__((unused)) const String &keyval) {
 void SaveCfgHandler(__attribute__((unused)) const String &keyval) {
   int stt = Config::SaveConfigToEEPROM();
   if (stt == 1)
-    SendMessageFrame(F("EEPROM save"));
+    Serial.println(F("Mcfg svd"));
   else {
     //SendKeyValuepair(F("Error save EEPROM failed with "), "stt", stt, 4);
   }
@@ -316,14 +294,14 @@ void SaveCfgHandler(__attribute__((unused)) const String &keyval) {
 void HelpHandler(__attribute__((unused)) const String &keyval) {
   int i;
   int countkwd = sizeof(DictionaryKeyword) / sizeof(DictionaryKeyword[0]);
-  for (i = 0; i < countkwd; i++) {
-    Serial.println((String)F("MKeyword ") + DictionaryKeyword[i].Keyword);
-  }
   int countparam = sizeof(DictionaryParam) / sizeof(DictionaryParam[0]);
-  for (i = 0; i < countparam; i++) {
-    SendKeyValuepair(F("Param "), DictionaryParam[i].Key, DictionaryParam[i].Type, 2);
+  Serial.println((String)F("MHelp ") + String(countkwd) + F(" ") + String(countparam));
+  for (i = 0; i < countkwd; i++) {
+    Serial.println((String)F("MKwd ") + DictionaryKeyword[i].Keyword);
   }
-  SendMessageFrame((String)F("MHelp listed ") + String(countkwd) + F(" keywords and ") + String(countparam) + F(" params"));
+  for (i = 0; i < countparam; i++) {
+    SendKeyValuepair(F("Par "), DictionaryParam[i].Key, DictionaryParam[i].Type, 2);
+  }
 }
 
 // setdin DIN TYPE MAP SHIFTEDMAP NAME
@@ -411,7 +389,7 @@ void InterpretCommand(char *pline) {
     }
   }
   if (i == count) {
-    Serial.println(F("E03 Syntax error"));
+    Serial.println((String)sE03);
   }
 }
 
@@ -419,7 +397,6 @@ void InterpretCommand(char *pline) {
 //-----------------------------------------------------------------------------
 // Message processing
 //-----------------------------------------------------------------------------
-
 
 int ProcessOneMessage() {
   if (Serial.available() > 0) {
@@ -449,41 +426,37 @@ int ProcessOneMessage() {
             }
             break;
 
-          case 'D':
-            {
-              Globals::VolatileConfig.DebugMode = true;
-              SendDebugMessageFrame(F("Debug ON"));
-            }
-            break;
           case 'd':
             {
+              Globals::VolatileConfig.DebugMode = true;
+              Serial.println(F("MDebug ON"));
+            }
+            break;
+          case 'D':
+            {
               Globals::VolatileConfig.DebugMode = false;
-              SendDebugMessageFrame(F("Debug OFF"));
+              Serial.println(F("MDebug OFF"));
             }
             break;
           case '?':
             {
               // Handshaking!
               // Send protocol version - hardcoded
-              Serial.print(F("?"));
-              SendXWord(PROTOCOL_VERSION_MAJOR, 4);
-              SendXWord(PROTOCOL_VERSION_MINOR, 4);
-              SendEOF();
+              Serial.println(F("?" PROTOCOL_VERSION_MAJOR PROTOCOL_VERSION_MINOR));
               // frame terminated
               index = read;
             }
             break;
 
-          case 'V':
+          case 'v':
             {
               // Board version - hardcoded
-              Serial.print(F(VERSION_STRING));
-              SendEOF();
+              Serial.println(F(VERSION_STRING));
               index = read;
             }
             break;
 
-          case 'U':
+          case 'u':
             {
               // Send single status frame
               if (!Globals::VolatileConfig.DoStreaming) {
@@ -492,7 +465,7 @@ int ProcessOneMessage() {
             }
             break;
 
-          case 'S':
+          case 's':
             {
               // Start streaming
               Globals::VolatileConfig.DoStreaming = true;
@@ -502,19 +475,19 @@ int ProcessOneMessage() {
           case 'e':
             {
               // Start streaming
-              Globals::VolatileConfig.DoEmulation = false;
+              Globals::VolatileConfig.DoEmulation = true;
               index = read;
             }
             break;
           case 'E':
             {
               // Start streaming
-              Globals::VolatileConfig.DoEmulation = true;
+              Globals::VolatileConfig.DoEmulation = false;
               index = read;
             }
             break;
 
-          case 'H':
+          case 'h':
             {
               // Halt streaming
               Globals::VolatileConfig.DoStreaming = false;
@@ -522,20 +495,20 @@ int ProcessOneMessage() {
             }
             break;
 
-          case 'O':
+          case 'o':
             {
-              // Set digital outputs value 4..7 (only 4) : OXX with XX being a value between 0..F that enable/disable an output
+              // Set digital outputs value 0..F (only 4 bits) : OXX with XX being a value between 0..F that enable/disable an output
               char *sc = (char *)(msg + index);
               int do_value = Utils::ConvertHexToInt(sc, 2);
               for (int i = 0; i < NB_DIGITALOUTPUTS; i++) {
                 Globals::DOut[i] = (do_value >> i) & 1;
               }
-              SendDebugMessageFrame("O=" + String(do_value, HEX));
+              Serial.println("MO=" + String(do_value, HEX));
               index += 2;
             }
             break;
 
-          case 'P':
+          case 'p':
             {
               // pwm block analog out (4x) : PXYY with X being a 4-bit selector and YY being a value between 0..FF
               char *sc = (char *)(msg + index);
@@ -546,18 +519,19 @@ int ProcessOneMessage() {
                   Globals::AOut[i] = do_value & 0xFF;
                 }
               }
-              SendDebugMessageFrame("pwm=" + String(do_value, HEX));
+              Serial.println("Mpwm=" + String(do_value, HEX));
               index += 3;
             }
             break;
 
-          case 'L':
+          case 'l':
             Config::PrintConfig();
             index = read;
             break;
 
           default:
-            Serial.println((String)F("E01 UNKNOWN CMD ") + String(msg));
+            Serial.print((__FlashStringHelper *)sE01);
+            Serial.println(msg);
             index = read;
             break;
         }
