@@ -70,9 +70,8 @@ void SendStatusFrame() {
     Serial.print((__FlashStringHelper *)sSPC);
   }
 
-  Serial.print(F("rr="));
-  Serial.print(Globals::refreshRate_us);
-  Serial.println(F(" us"));
+  Serial.print(F("rr_us="));
+  Serial.println(Globals::refreshRate_us);
 }
 
 void SendMessageFrame(const String &msg) {
