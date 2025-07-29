@@ -145,10 +145,10 @@ For axis and buttons, the 7th MSB (0b10000000) gives the player selection P1-P2,
 For HAT switch, the 7th MSB gives the player selection P1-P2, 5&6th gives the hat switch number, 3 to 0 gives the direction.
 
 ### DMIN
-Dead zone min value if hat or button, usually 60
+Dead zone min value if hat or button, usually 60, in HEX format (no 0x prefix needed)
 
 ### DMAX
-Dead zone max value if hat or button, usually 80
+Dead zone max value if hat or button, usually 80, in HEX format (no 0x prefix needed)
  
 #### NAME
 Optionnal name of input (limited to 3 char).
