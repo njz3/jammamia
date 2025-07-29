@@ -12,7 +12,7 @@ Arduino libraries needed:
 
 Specific JammaMia libraies (in this github):
 - KeyboarNKey for 24-Key rollover (https://github.com/njz3/jammamia/tree/main/Libs/KeyboardNKey)
-- MouseN for 2 mouses emulation (https://github.com/njz3/jammamia/tree/main/Libs/MouseN)
+- MouseN for 2 mices emulation (https://github.com/njz3/jammamia/tree/main/Libs/MouseN)
 
 # Technical information
 
