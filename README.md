@@ -67,7 +67,7 @@ o long escaped commands:
 
 - ```delay```: add a loop delay in microseconds to lower the refresh rate and save USB resources.
 - ```kblay```: keyboard layout. 0=USA, 1=FR, 2=DE, 3=IT, 4=ES. Default value is 1 (FR).
-- ```emode```: emulation modes. 0=no emulation, 1=kerboard only, 2=Joystick only, 3=joystick and keyboard, 4=mouse, 5=mouse and keyboard. Default value is 3.
+- ```emode```: emulation modes. 0=no emulation, 1=keyboard only, 2=joystick only, 3=joystick and keyboard, 4=mouse, 5=mouse and keyboard. Default value is 3.
 - ```axes```: number of emulated axes for each gamepad. Default value 2.
 - ```btns```: number of emulated boutons for each gamepad. Default value is 0xA (=10)
 - ```hats```: number of emulated HAT switch for each gamepad. Default value is 2.
