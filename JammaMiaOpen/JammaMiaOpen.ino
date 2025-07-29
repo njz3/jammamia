@@ -530,16 +530,22 @@ void doEmulation() {
 
 
 uint32_t lastrun_us = 0;
+uint32_t lastrunGlobalRR_us = 0;
+int nbRuns = 0;
 void loop() {
 
   //---------------------------------------------------------------------------
-  // Throttle
+  // Refresh rate
   //---------------------------------------------------------------------------
 
-  // Make the loop rate close to selected delay
+  // Measure refresh rate, always at begining of loop
   uint32_t now_us = micros();
-  Globals::refreshRate_us = (uint16_t)(now_us - lastrun_us);
+  uint32_t refreshrate_us = (uint32_t)(now_us - lastrun_us);
   lastrun_us = now_us;
+  if ((tickCounter & 0xFF) == 0) {
+    Globals::refreshRate_us = (uint16_t)((now_us - lastrunGlobalRR_us) >> 7);
+    lastrunGlobalRR_us = now_us;
+  }
 
   //---------------------------------------------------------------------------
   // IOs
@@ -575,8 +581,16 @@ void loop() {
   // Process serial command
   Protocol::ProcessOneMessage();
 
-  // Arduino stuff will run after this method
+  //---------------------------------------------------------------------------
+  // Throttle
+  //---------------------------------------------------------------------------
+
+  // Make the loop rate close to selected delay
   if (Config::ConfigFile.Delay_us > 0) {
-    delayMicroseconds(Config::ConfigFile.Delay_us);
+    int32_t diff = ((int32_t)Config::ConfigFile.Delay_us - (int32_t)refreshrate_us);
+    if (diff > 0) {
+      delayMicroseconds(diff);
+    }
   }
+  // Arduino stuff will run after this method
 }

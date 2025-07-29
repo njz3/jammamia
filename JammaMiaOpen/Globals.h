@@ -26,7 +26,7 @@ extern int16_t AIn[NB_ANALOGINPUTS];
 // All digital outputs
 extern bool DOut[NB_DIGITALOUTPUTS];
 // All analog outputs
-extern int16_t AOut[NB_ANALOGOUTPUTS];
+extern uint8_t AOut[NB_ANALOGOUTPUTS];
 // MCU internal IOs
 extern uint16_t MCUIOs;
 // MCP IOs

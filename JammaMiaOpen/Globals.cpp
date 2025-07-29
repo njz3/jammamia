@@ -19,7 +19,7 @@ int16_t AIn[NB_ANALOGINPUTS] = {};
 // All digital outputs
 bool DOut[NB_DIGITALOUTPUTS] = {};
 // All analog outputs
-int16_t AOut[NB_ANALOGOUTPUTS] = {};
+uint8_t AOut[NB_ANALOGOUTPUTS] = {};
 // MCU internal IOs: Bit order: 8, 16, 14, 15
 uint16_t MCUIOs;
 // MCP IOs: Bit order GPA 0..6, GPB 0..6

@@ -496,7 +496,7 @@ int ProcessOneMessage() {
 
           case 'o':
             {
-              // Set digital outputs value 0..F (only 4 bits) : OXX with XX being a value between 0..F that enable/disable an output
+              // Set digital outputs value 0..F (only 4 bits) : oXX with XX being a value between 0..F that enable/disable an output
               char *sc = (char *)(msg + index);
               int do_value = Utils::ConvertHexToInt(sc, 2);
               for (int i = 0; i < NB_DIGITALOUTPUTS; i++) {
@@ -509,7 +509,7 @@ int ProcessOneMessage() {
 
           case 'p':
             {
-              // pwm block analog out (4x) : PXYY with X being a 4-bit selector and YY being a value between 0..FF
+              // pwm block analog out (4x) : pXYY with X being a 4-bit selector and YY being a value between 0..FF
               char *sc = (char *)(msg + index);
               int do_value = Utils::ConvertHexToInt(sc, 3);
               for (int i = 0; i < NB_ANALOGOUTPUTS; i++) {
@@ -542,5 +542,4 @@ int ProcessOneMessage() {
   }
   return 0;
 }
-
 }
