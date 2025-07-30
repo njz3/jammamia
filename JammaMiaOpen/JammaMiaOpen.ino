@@ -2,9 +2,9 @@
  * (c) 2023 by Bandicoot & njz3
  */
 
-#include "config.h"
+#include "Config.h"
 #include "Globals.h"
-#include "protocol.h"
+#include "Protocol.h"
 #include <Adafruit_MCP23X17.h>
 #include <digitalWriteFast.h>
 
