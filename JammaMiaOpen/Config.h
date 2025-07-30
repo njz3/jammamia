@@ -174,7 +174,7 @@ typedef struct __attribute__((__packed__)) {
   uint8_t JoyNumberOfAxes;
   // Number of joy's HAT switch between 0..3 (MAX_HAT)
   uint8_t JoyNumberOfHAT;
-  // index of digital input that is used to use shifted/alternative map. 0 means no shifted input is configured
+  // index of digital input +1 that is used to use shifted/alternative map. 0 means no shifted input is configured
   uint8_t ShiftInput;
 } EEPROM_CONFIG;
 

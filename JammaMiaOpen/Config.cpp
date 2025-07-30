@@ -187,7 +187,7 @@ void ResetConfig() {
 #if defined(USE_KEYB) && !defined(USE_JOY) && !defined(USE_MOUSE)
   // Keyboard only
   Config::ConfigFile.EmulationMode = Config::EmulationModes::Keyboard;
-  ConfigFile.ShiftInput = 13;  // Shift input is "P1-START"
+  ConfigFile.ShiftInput = 14;  // Shift input "P1-START" din index is 13+1 since index is 1-based
 
   // Emulated keys for all digital inputs
   for (uint8_t i = 0; i < sizeof(ConfigFile.DigitalInB) / sizeof(ConfigFile.DigitalInB[0]); i++) {
