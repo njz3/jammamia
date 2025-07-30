@@ -125,8 +125,8 @@ void ResetConfig() {
   memset(&ConfigFile, 0, sizeof(ConfigFile));
   ConfigFile.Delay_us = 0;
   // Emulated layout
-  //ConfigFile.KeybLayout = 0;  // Layout en-US
-  ConfigFile.KeybLayout = 1;  // Layout fr-FR
+  ConfigFile.KeybLayout = 0;  // Layout en-US
+  //ConfigFile.KeybLayout = 1;  // Layout fr-FR
 
 #if defined(USE_JOY) && !defined(USE_KEYB) && !defined(USE_MOUSE)
   // Joystick only
