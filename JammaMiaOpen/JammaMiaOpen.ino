@@ -367,7 +367,7 @@ void ProcessDigitalInput(int index, bool newstate) {
 // value is between 0 and 1023 (0x3FF). middle point being 511 (0x1FF)
 // Threasholds for center and middle deadzone : 0x100 and 0x300
 void ProcessAnalogInput(int index, int value) {
-  if ((tickCounter % 10) != 0) {
+  if ((tickCounter % 10) == 0) {
     // Only update every 10 cycles
     return;
   }
@@ -542,7 +542,7 @@ void loop() {
   uint32_t now_us = micros();
   uint32_t refreshrate_us = (uint32_t)(now_us - lastrun_us);
   lastrun_us = now_us;
-  if ((tickCounter & 0xFF) == 0) {
+  if ((tickCounter & 0x7F) == 0) {
     Globals::refreshRate_us = (uint16_t)((now_us - lastrunGlobalRR_us) >> 7);
     lastrunGlobalRR_us = now_us;
   }
